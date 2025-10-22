@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insumos - Sistema de Gestão de Restaurante</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">Gestão de Insumos</h1>
+            <a href="dashboard.html" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                Voltar ao Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <!-- Container Principal -->
+    <div class="container mx-auto px-6 py-8">
+        <!-- Formulário de Cadastro -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Cadastrar Novo Insumo</h2>
+            <form id="insumoForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-gray-600 mb-2">Nome do Insumo</label>
+                    <input 
+                        type="text" 
+                        id="nome" 
+                        placeholder="Ex: Farinha de Trigo" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    />
+                </div>
+                <div>
+                    <label class="block text-gray-600 mb-2">Unidade de Medida</label>
+                    <input 
+                        type="text" 
+                        id="unidade_medida" 
+                        placeholder="Ex: kg, un, litro" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    />
+                </div>
+                <div>
+                    <label class="block text-gray-600 mb-2">Estoque Inicial</label>
+                    <input 
+                        type="number" 
+                        id="estoque_atual" 
+                        placeholder="Ex: 50" 
+                        step="0.01"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    />
+                </div>
+                <div class="md:col-span-3">
+                    <button 
+                        type="submit" 
+                        class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition"
+                    >
+                        Cadastrar Insumo
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tabela de Insumos -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Lista de Insumos</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full table-auto">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-700">
+                            <th class="px-4 py-2 text-left">ID</th>
+                            <th class="px-4 py-2 text-left">Nome</th>
+                            <th class="px-4 py-2 text-left">Unidade</th>
+                            <th class="px-4 py-2 text-left">Estoque Atual</th>
+                            <th class="px-4 py-2 text-left">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="insumosTableBody">
+                        <!-- Dados serão carregados dinamicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+
+        // Carregar insumos ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarInsumos();
+        });
+
+        // Cadastrar novo insumo
+        document.getElementById('insumoForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const data = {
+                nome: document.getElementById('nome').value,
+                unidade_medida: document.getElementById('unidade_medida').value,
+                estoque_atual: parseFloat(document.getElementById('estoque_atual').value)
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/insumos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Insumo cadastrado com sucesso!');
+                    document.getElementById('insumoForm').reset();
+                    carregarInsumos();
+                } else {
+                    alert('Erro ao cadastrar insumo.');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao conectar com o servidor.');
+            }
+        });
+
+        // Carregar lista de insumos
+        async function carregarInsumos() {
+            try {
+                const response = await fetch(`${API_URL}/insumos`);
+                const insumos = await response.json();
+
+                const tbody = document.getElementById('insumosTableBody');
+                tbody.innerHTML = '';
+
+                insumos.forEach(insumo => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b hover:bg-gray-50';
+                    tr.innerHTML = `
+                        <td class="px-4 py-2">${insumo.id}</td>
+                        <td class="px-4 py-2">${insumo.nome}</td>
+                        <td class="px-4 py-2">${insumo.unidade_medida}</td>
+                        <td class="px-4 py-2">${insumo.estoque_atual}</td>
+                        <td class="px-4 py-2 flex space-x-2">
+                            <button onclick="editarInsumo(${insumo.id})" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition">
+                                Editar
+                            </button>
+                            <button onclick="excluirInsumo(${insumo.id})" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition">
+                                Excluir
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar insumos:', error);
+            }
+        }
+
+        // Editar insumo (simplificado)
+        async function editarInsumo(id) {
+            const insumos = await (await fetch(`${API_URL}/insumos`)).json();
+            const insumoToEdit = insumos.find(i => i.id === id);
+
+            if (!insumoToEdit) {
+                alert('Insumo não encontrado.');
+                return;
+            }
+
+            const novoNome = prompt('Editar Nome:', insumoToEdit.nome);
+            if (novoNome === null) return;
+
+            const novaUnidadeMedida = prompt('Editar Unidade de Medida:', insumoToEdit.unidade_medida);
+            if (novaUnidadeMedida === null) return;
+
+            const novoEstoque = prompt('Editar Estoque Atual:', insumoToEdit.estoque_atual);
+            if (novoEstoque === null) return;
+
+            const data = {
+                nome: novoNome,
+                unidade_medida: novaUnidadeMedida,
+                estoque_atual: parseFloat(novoEstoque)
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/insumos/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Insumo atualizado com sucesso!');
+                    carregarInsumos();
+                } else {
+                    alert('Erro ao atualizar insumo.');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao conectar com o servidor.');
+            }
+        }
+
+        // Excluir insumo
+        async function excluirInsumo(id) {
+            if (!confirm('Tem certeza que deseja excluir este insumo?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/insumos/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                    carregarInsumos();
+                } else {
+                    alert('Erro ao excluir insumo: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao conectar com o servidor.');
+            }
+        }
+    </script>
+</body>
+</html>

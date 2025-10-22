@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema de Gestão de Restaurante</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">Sistema de Gestão - Restaurante</h1>
+            <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
+                Sair
+            </button>
+        </div>
+    </nav>
+
+    <!-- Container Principal -->
+    <div class="container mx-auto px-6 py-8">
+        <h2 class="text-3xl font-semibold text-gray-700 mb-6">Dashboard</h2>
+
+        <!-- Grid de Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Card: Insumos -->
+            <a href="insumos.html" class="block">
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition duration-200 cursor-pointer">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-700">Insumos</h3>
+                            <p class="text-gray-500 mt-2">Gerenciar estoque de insumos</p>
+                        </div>
+                        <div class="text-4xl text-blue-500">
+                            📦
+                        </div>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Card: Produtos -->
+            <a href="produtos.html" class="block">
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition duration-200 cursor-pointer">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-700">Produtos</h3>
+                            <p class="text-gray-500 mt-2">Cadastrar pratos e lanches</p>
+                        </div>
+                        <div class="text-4xl text-green-500">
+                            🍔
+                        </div>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Card: Fichas Técnicas -->
+            <a href="fichas_tecnicas.html" class="block">
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition duration-200 cursor-pointer">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-700">Fichas Técnicas</h3>
+                            <p class="text-gray-500 mt-2">Criar fichas técnicas</p>
+                        </div>
+                        <div class="text-4xl text-purple-500">
+                            📋
+                        </div>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Card: Vendas -->
+            <a href="vendas.html" class="block">
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition duration-200 cursor-pointer">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-700">Vendas</h3>
+                            <p class="text-gray-500 mt-2">Registrar vendas</p>
+                        </div>
+                        <div class="text-4xl text-yellow-500">
+                            💰
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function logout() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
