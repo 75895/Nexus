@@ -3,170 +3,317 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Sistema de Gestão de Restaurante</title>
+    <title>Dashboard - Sistema de Gestão</title>
+    <link rel="icon" type="image/png" href="imagens/favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-        }
-        .card-icon {
-            font-size: 3rem; /* Aumenta o tamanho dos ícones */
-            line-height: 1;
-        }
-        .card-title {
-            font-weight: 600; /* Semibold */
-            color: #333;
-        }
-        .card-description {
-            color: #666;
-        }
-        .navbar-brand {
-            font-weight: 700; /* Bold */
-            color: #222;
-        }
-        .btn-logout {
-            background-color: #ef4444; /* red-500 */
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            transition: background-color 0.2s ease-in-out;
-        }
-        .btn-logout:hover {
-            background-color: #dc2626; /* red-600 */
-        }
-        .dashboard-header {
-            color: #333;
-        }
-        .card-link {
-            display: block;
-            height: 100%; /* Garante que os cards tenham a mesma altura em uma linha */
-        }
-        .card-item {
-            background-color: #ffffff;
-            border-radius: 0.75rem; /* Bordas mais arredondadas */
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Sombra mais suave e proeminente */
-            padding: 1.5rem;
-            transition: all 0.2s ease-in-out;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .card-item:hover {
-            transform: translateY(-5px); /* Efeito de "levantar" ao passar o mouse */
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-        }
-        .footer {
-            background-color: #333;
-            color: #eee;
-            padding: 2rem 0;
-            text-align: center;
-            margin-top: 3rem;
-        }
-        .footer a {
-            color: #a78bfa; /* purple-400 */
-            text-decoration: none;
-        }
-        .footer a:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
-    <!-- Navbar -->
-    <nav class="bg-white shadow-sm py-4">
-        <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-            <h1 class="text-3xl navbar-brand">Gestão <span class="text-indigo-600">NEXUS</span></h1>
-            <button onclick="logout()" class="btn-logout">
-                Sair
-            </button>
+<body class="bg-gray-100">
+    
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">📊 Dashboard - Sistema Nexus</h1>
+            <div class="flex items-center gap-4">
+                <span id="usuario-nome" class="text-sm">Bem-vindo!</span>
+                <button onclick="logout( )" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-semibold transition">
+                    Sair
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md">
+        <div class="container mx-auto px-4">
+            <ul class="flex gap-6 py-3">
+                <li><a href="dashboard.html" class="text-blue-600 font-semibold hover:text-blue-800">Dashboard</a></li>
+                <li><a href="insumos.html" class="text-gray-600 hover:text-blue-600">Insumos</a></li>
+                <li><a href="produtos.html" class="text-gray-600 hover:text-blue-600">Produtos</a></li>
+                <li><a href="fichas_tecnicas.html" class="text-gray-600 hover:text-blue-600">Fichas Técnicas</a></li>
+                <li><a href="vendas.html" class="text-gray-600 hover:text-blue-600">Vendas</a></li>
+            </ul>
         </div>
     </nav>
 
-    <!-- Container Principal -->
-    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-grow">
-        <h2 class="text-4xl font-bold dashboard-header mb-8">Dashboard</h2>
-
-        <!-- Grid de Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <!-- Card: Insumos -->
-            <a href="insumos.html" class="card-link">
-                <div class="card-item">
-                    <div class="flex items-start justify-between mb-4">
-                        <div>
-                            <h3 class="text-2xl card-title">Insumos</h3>
-                            <p class="text-md card-description mt-1">Gerenciar estoque de insumos</p>
-                        </div>
-                        <div class="card-icon text-blue-500">
-                            📦
-                        </div>
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        
+        <!-- Cards de Estatísticas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            
+            <!-- Card: Vendas (30 dias) -->
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-semibold">Vendas (30 dias)</p>
+                        <p id="stat-vendas" class="text-3xl font-bold text-gray-800">-</p>
                     </div>
-                    <span class="text-sm text-indigo-500 hover:underline">Ver detalhes &rarr;</span>
+                    <div class="text-blue-500 text-4xl">🛒</div>
                 </div>
-            </a>
+            </div>
 
-            <!-- Card: Produtos -->
-            <a href="produtos.html" class="card-link">
-                <div class="card-item">
-                    <div class="flex items-start justify-between mb-4">
-                        <div>
-                            <h3 class="text-2xl card-title">Produtos</h3>
-                            <p class="text-md card-description mt-1">Cadastrar pratos e lanches</p>
-                        </div>
-                        <div class="card-icon text-green-500">
-                            🍔
-                        </div>
+            <!-- Card: Receita (30 dias) -->
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-semibold">Receita (30 dias)</p>
+                        <p id="stat-receita" class="text-3xl font-bold text-gray-800">-</p>
                     </div>
-                    <span class="text-sm text-indigo-500 hover:underline">Ver detalhes &rarr;</span>
+                    <div class="text-green-500 text-4xl">💰</div>
                 </div>
-            </a>
+            </div>
 
-            <!-- Card: Fichas Técnicas -->
-            <a href="fichas_tecnicas.html" class="card-link">
-                <div class="card-item">
-                    <div class="flex items-start justify-between mb-4">
-                        <div>
-                            <h3 class="text-2xl card-title">Fichas Técnicas</h3>
-                            <p class="text-md card-description mt-1">Criar fichas técnicas</p>
-                        </div>
-                        <div class="card-icon text-purple-500">
-                            📋
-                        </div>
+            <!-- Card: Total de Produtos -->
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-semibold">Produtos Cadastrados</p>
+                        <p id="stat-produtos" class="text-3xl font-bold text-gray-800">-</p>
                     </div>
-                    <span class="text-sm text-indigo-500 hover:underline">Ver detalhes &rarr;</span>
+                    <div class="text-purple-500 text-4xl">📦</div>
                 </div>
-            </a>
+            </div>
 
-            <!-- Card: Vendas -->
-            <a href="vendas.html" class="card-link">
-                <div class="card-item">
-                    <div class="flex items-start justify-between mb-4">
-                        <div>
-                            <h3 class="text-2xl card-title">Vendas</h3>
-                            <p class="text-md card-description mt-1">Registrar vendas</p>
-                        </div>
-                        <div class="card-icon text-yellow-500">
-                            💰
-                        </div>
+            <!-- Card: Alertas de Estoque -->
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-semibold">Alertas de Estoque</p>
+                        <p id="stat-alertas" class="text-3xl font-bold text-gray-800">-</p>
                     </div>
-                    <span class="text-sm text-indigo-500 hover:underline">Ver detalhes &rarr;</span>
+                    <div class="text-red-500 text-4xl">⚠️</div>
                 </div>
-            </a>
+            </div>
+
         </div>
-    </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <p>&copy; 2025 Sistema de Gestão de Restaurante. Todos os direitos reservados.</p>
-        <p>Desenvolvido com ❤️ por <a href="#">Bruno Silvestre</a></p>
-    </footer>
+        <!-- Gráfico e Ranking -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            
+            <!-- Gráfico de Vendas -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">📊 Vendas dos Últimos 7 Dias</h2>
+                <canvas id="graficoVendas"></canvas>
+            </div>
+
+            <!-- Produtos Mais Vendidos -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">🏆 Produtos Mais Vendidos (30 dias)</h2>
+                <div id="ranking-produtos" class="space-y-3">
+                    <p class="text-gray-500 text-center">Carregando...</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Alertas de Estoque Baixo -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">⚠️ Alertas de Estoque Baixo</h2>
+            <div id="alertas-estoque">
+                <p class="text-gray-500 text-center">Carregando...</p>
+            </div>
+        </div>
+
+    </main>
 
     <script>
-        function logout() {
-            // Implementar lógica de logout aqui, como limpar tokens de sessão, etc.
-            alert('Você foi desconectado!'); // Apenas para demonstração
-            window.location.href = 'index.html'; // Redireciona para a página de login ou inicial
+        const API_URL = 'https://nexus-backend-pvj4.onrender.com';
+        let graficoVendas = null;
+
+        // Verifica se o usuário está logado
+        function verificarLogin( ) {
+            const usuarioNome = localStorage.getItem('usuario_nome');
+            if (!usuarioNome) {
+                alert('Você precisa fazer login primeiro!');
+                window.location.href = 'index.html';
+                return false;
+            }
+            document.getElementById('usuario-nome').textContent = `Olá, ${usuarioNome}!`;
+            return true;
         }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem('usuario_id');
+            localStorage.removeItem('usuario_nome');
+            window.location.href = 'index.html';
+        }
+
+        // Formatar moeda
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor);
+        }
+
+        // Carregar estatísticas gerais
+        async function carregarEstatisticas() {
+            try {
+                const response = await fetch(`${API_URL}/dashboard/estatisticas`);
+                const data = await response.json();
+
+                document.getElementById('stat-vendas').textContent = data.vendas_30_dias;
+                document.getElementById('stat-receita').textContent = formatarMoeda(data.receita_30_dias);
+                document.getElementById('stat-produtos').textContent = data.total_produtos;
+                document.getElementById('stat-alertas').textContent = data.alertas_estoque_baixo;
+
+                // Destaca alertas em vermelho se houver
+                if (data.alertas_estoque_baixo > 0) {
+                    document.getElementById('stat-alertas').classList.add('text-red-600');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+
+        // Carregar gráfico de vendas
+        async function carregarGraficoVendas() {
+            try {
+                const response = await fetch(`${API_URL}/dashboard/vendas-por-dia`);
+                const data = await response.json();
+
+                const labels = data.map(v => {
+                    const date = new Date(v.dia);
+                    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                });
+                const valores = data.map(v => v.receita);
+
+                const ctx = document.getElementById('graficoVendas').getContext('2d');
+                
+                if (graficoVendas) {
+                    graficoVendas.destroy();
+                }
+
+                graficoVendas = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Receita (R$)',
+                            data: valores,
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'R$ ' + value.toFixed(2);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Erro ao carregar gráfico:', error);
+            }
+        }
+
+        // Carregar produtos mais vendidos
+        async function carregarProdutosMaisVendidos() {
+            try {
+                const response = await fetch(`${API_URL}/dashboard/produtos-mais-vendidos`);
+                const data = await response.json();
+
+                const container = document.getElementById('ranking-produtos');
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center">Nenhuma venda registrada nos últimos 30 dias.</p>';
+                    return;
+                }
+
+                container.innerHTML = data.map((produto, index) => `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl font-bold text-gray-400">${index + 1}º</span>
+                            <div>
+                                <p class="font-semibold text-gray-800">${produto.nome}</p>
+                                <p class="text-sm text-gray-500">${produto.total_vendido} unidades vendidas</p>
+                            </div>
+                        </div>
+                        <span class="font-bold text-green-600">${formatarMoeda(produto.receita)}</span>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Erro ao carregar produtos mais vendidos:', error);
+            }
+        }
+
+        // Carregar alertas de estoque baixo
+        async function carregarAlertasEstoque() {
+            try {
+                const response = await fetch(`${API_URL}/dashboard/estoque-baixo`);
+                const data = await response.json();
+
+                const container = document.getElementById('alertas-estoque');
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="text-green-600 text-center font-semibold">✅ Todos os insumos estão com estoque adequado!</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-red-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Insumo</th>
+                                    <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Estoque Atual</th>
+                                    <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Unidade</th>
+                                    <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(insumo => `
+                                    <tr class="border-b hover:bg-gray-50">
+                                        <td class="px-4 py-3 font-semibold">${insumo.nome}</td>
+                                        <td class="px-4 py-3 text-red-600 font-bold">${insumo.estoque_atual}</td>
+                                        <td class="px-4 py-3 text-gray-600">${insumo.unidade_medida}</td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">
+                                                ${insumo.estoque_atual < 5 ? '🔴 Crítico' : '⚠️ Baixo'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Erro ao carregar alertas de estoque:', error);
+            }
+        }
+
+        // Inicializar dashboard
+        async function inicializar() {
+            if (!verificarLogin()) return;
+
+            await carregarEstatisticas();
+            await carregarGraficoVendas();
+            await carregarProdutosMaisVendidos();
+            await carregarAlertasEstoque();
+        }
+
+        // Executar ao carregar a página
+        window.addEventListener('DOMContentLoaded', inicializar);
     </script>
+
 </body>
 </html>
