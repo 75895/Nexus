@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Mesas - Sistema de Gestão de Restaurante</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">Gestão de Mesas</h1>
+            <a href="dashboard.html" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                Voltar ao Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <!-- Container Principal -->
+    <div class="container mx-auto px-6 py-8">
+        <!-- Formulário de Cadastro de Mesa -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Cadastrar Nova Mesa</h2>
+            <form id="mesaForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-gray-600 mb-2">Número da Mesa *</label>
+                    <input 
+                        type="number" 
+                        id="numero" 
+                        placeholder="Ex: 1" 
+                        min="1"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    />
+                </div>
+                <div>
+                    <label class="block text-gray-600 mb-2">Capacidade *</label>
+                    <input 
+                        type="number" 
+                        id="capacidade" 
+                        placeholder="Ex: 4" 
+                        min="1"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    />
+                </div>
+                <div>
+                    <label class="block text-gray-600 mb-2">Localização</label>
+                    <input 
+                        type="text" 
+                        id="localizacao" 
+                        placeholder="Ex: Salão Principal" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+                <div class="md:col-span-3">
+                    <button 
+                        type="submit" 
+                        class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition"
+                    >
+                        Cadastrar Mesa
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Layout do Salão -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Layout do Salão</h2>
+            <div class="mb-4 flex gap-4 text-sm">
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 bg-green-500 rounded"></div>
+                    <span>Disponível</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 bg-red-500 rounded"></div>
+                    <span>Ocupada</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 bg-yellow-500 rounded"></div>
+                    <span>Reservada</span>
+                </div>
+            </div>
+            <div id="mesasGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <!-- Mesas serão carregadas dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Comandas Abertas -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Comandas Abertas</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full table-auto">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-700">
+                            <th class="px-4 py-2 text-left">ID</th>
+                            <th class="px-4 py-2 text-left">Mesa</th>
+                            <th class="px-4 py-2 text-left">Total</th>
+                            <th class="px-4 py-2 text-left">Abertura</th>
+                            <th class="px-4 py-2 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comandasTableBody">
+                        <!-- Dados serão carregados dinamicamente -->
+                        <tr>
+                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">Nenhuma comanda aberta</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://nexus-backend-pvj4.onrender.com';
+
+        // Carregar mesas e comandas ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarMesas();
+            carregarComandasAbertas();
+            
+            // Atualizar a cada 30 segundos
+            setInterval(() => {
+                carregarMesas();
+                carregarComandasAbertas();
+            }, 30000);
+        });
+
+        // Cadastrar nova mesa
+        document.getElementById('mesaForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const data = {
+                numero: parseInt(document.getElementById('numero').value),
+                capacidade: parseInt(document.getElementById('capacidade').value),
+                localizacao: document.getElementById('localizacao').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/api/mesas`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Mesa cadastrada com sucesso!');
+                    document.getElementById('mesaForm').reset();
+                    carregarMesas();
+                } else {
+                    const error = await response.json();
+                    alert(`Erro: ${error.error}`);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao conectar com o servidor.');
+            }
+        });
+
+        // Carregar mesas
+        async function carregarMesas() {
+            try {
+                const response = await fetch(`${API_URL}/api/mesas`);
+                const mesas = await response.json();
+
+                const grid = document.getElementById('mesasGrid');
+                grid.innerHTML = '';
+
+                if (mesas.length === 0) {
+                    grid.innerHTML = '<p class="col-span-full text-center text-gray-500">Nenhuma mesa cadastrada</p>';
+                    return;
+                }
+
+                mesas.forEach(mesa => {
+                    const mesaCard = document.createElement('div');
+                    
+                    let corStatus = 'bg-green-500';
+                    if (mesa.status === 'ocupada') corStatus = 'bg-red-500';
+                    if (mesa.status === 'reservada') corStatus = 'bg-yellow-500';
+                    
+                    mesaCard.className = `${corStatus} text-white rounded-lg p-4 cursor-pointer hover:opacity-80 transition`;
+                    mesaCard.innerHTML = `
+                        <div class="text-center">
+                            <div class="text-3xl font-bold mb-2">${mesa.numero}</div>
+                            <div class="text-sm">Cap: ${mesa.capacidade}</div>
+                            ${mesa.localizacao ? `<div class="text-xs mt-1">${mesa.localizacao}</div>` : ''}
+                            ${mesa.comanda_ativa ? `<div class="text-sm mt-2 font-semibold">R$ ${mesa.comanda_ativa.total.toFixed(2)}</div>` : ''}
+                        </div>
+                    `;
+                    
+                    mesaCard.addEventListener('click', () => {
+                        if (mesa.status === 'disponivel') {
+                            abrirComanda(mesa.id, mesa.numero);
+                        } else if (mesa.comanda_ativa) {
+                            window.location.href = `comanda.html?id=${mesa.comanda_ativa.id}`;
+                        }
+                    });
+                    
+                    grid.appendChild(mesaCard);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar mesas:', error);
+            }
+        }
+
+        // Abrir comanda
+        async function abrirComanda(mesaId, mesaNumero) {
+            if (!confirm(`Abrir comanda na Mesa ${mesaNumero}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/comandas`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ mesa_id: mesaId })
+                });
+
+                if (response.ok) {
+                    const comanda = await response.json();
+                    alert('Comanda aberta com sucesso!');
+                    window.location.href = `comanda.html?id=${comanda.id}`;
+                } else {
+                    const error = await response.json();
+                    alert(`Erro: ${error.error}`);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao conectar com o servidor.');
+            }
+        }
+
+        // Carregar comandas abertas
+        async function carregarComandasAbertas() {
+            try {
+                const response = await fetch(`${API_URL}/api/comandas?status=aberta`);
+                const comandas = await response.json();
+
+                const tbody = document.getElementById('comandasTableBody');
+                tbody.innerHTML = '';
+
+                if (comandas.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">Nenhuma comanda aberta</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                comandas.forEach(comanda => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b hover:bg-gray-50';
+                    
+                    const dataAbertura = new Date(comanda.data_abertura);
+                    const dataFormatada = dataAbertura.toLocaleString('pt-BR');
+                    
+                    tr.innerHTML = `
+                        <td class="px-4 py-2">#${comanda.id}</td>
+                        <td class="px-4 py-2">Mesa ${comanda.mesa_numero}</td>
+                        <td class="px-4 py-2 font-semibold">R$ ${comanda.total.toFixed(2)}</td>
+                        <td class="px-4 py-2">${dataFormatada}</td>
+                        <td class="px-4 py-2 text-center">
+                            <button 
+                                onclick="window.location.href='comanda.html?id=${comanda.id}'" 
+                                class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                            >
+                                Ver Detalhes
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar comandas:', error);
+            }
+        }
+    </script>
+</body>
+</html>
