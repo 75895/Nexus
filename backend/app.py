@@ -434,30 +434,45 @@ def get_ficha_tecnica(produto_id):
 
 @app.route('/fichas_tecnicas', methods=['POST'])
 def add_ficha_tecnica():
-    data = request.get_json()
-    produto_id = data['produto_id']
-    insumo_id = data['insumo_id']
-    quantidade_necessaria = data['quantidade_necessaria']
+    """Adiciona um item à ficha técnica de um produto"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'produto_id' not in data or 'insumo_id' not in data or 'quantidade_necessaria' not in data:
+            return jsonify({'error': 'Dados incompletos'}), 400
+        
+        produto_id = int(data['produto_id'])
+        insumo_id = int(data['insumo_id'])
+        quantidade_necessaria = float(data['quantidade_necessaria'])
+        
+        if quantidade_necessaria <= 0:
+            return jsonify({'error': 'Quantidade deve ser maior que zero'}), 400
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        if is_postgres:
+            cursor.execute(
+                'INSERT INTO ficha_tecnica (produto_id, insumo_id, quantidade_necessaria) VALUES (%s, %s, %s) RETURNING id',
+                (produto_id, insumo_id, quantidade_necessaria)
+            )
+            new_id = cursor.fetchone()[0]
+        else:
+            cursor.execute(
+                'INSERT INTO ficha_tecnica (produto_id, insumo_id, quantidade_necessaria) VALUES (?, ?, ?)',
+                (produto_id, insumo_id, quantidade_necessaria)
+            )
+            new_id = cursor.lastrowid
+        
+        db.commit()
+        return jsonify({'id': new_id, 'message': 'Item adicionado à ficha técnica com sucesso'}), 201
     
-    db = get_db()
-    cursor = db.cursor()
-    
-    is_postgres = os.environ.get('DATABASE_URL') is not None
-    if is_postgres:
-        cursor.execute(
-            'INSERT INTO ficha_tecnica (produto_id, insumo_id, quantidade_necessaria) VALUES (%s, %s, %s) RETURNING id',
-            (produto_id, insumo_id, quantidade_necessaria)
-        )
-        new_id = cursor.fetchone()[0]
-    else:
-        cursor.execute(
-            'INSERT INTO ficha_tecnica (produto_id, insumo_id, quantidade_necessaria) VALUES (?, ?, ?)',
-            (produto_id, insumo_id, quantidade_necessaria)
-        )
-        new_id = cursor.lastrowid
-    
-    db.commit()
-    return jsonify({'id': new_id}), 201
+    except ValueError as e:
+        return jsonify({'error': f'Valor inválido: {str(e)}'}), 400
+    except Exception as e:
+        print(f"Erro ao adicionar ficha técnica: {str(e)}")
+        return jsonify({'error': f'Erro ao adicionar ficha técnica: {str(e)}'}), 500
 
 # ========================================
 # ROTAS DE VENDAS
