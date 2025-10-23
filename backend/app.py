@@ -457,7 +457,8 @@ def add_ficha_tecnica():
                 'INSERT INTO ficha_tecnica (produto_id, insumo_id, quantidade_necessaria) VALUES (%s, %s, %s) RETURNING id',
                 (produto_id, insumo_id, quantidade_necessaria)
             )
-            new_id = cursor.fetchone()[0]
+            result = cursor.fetchone()
+            new_id = result['id'] if isinstance(result, dict) else result[0]
         else:
             cursor.execute(
                 'INSERT INTO ficha_tecnica (produto_id, insumo_id, quantidade_necessaria) VALUES (?, ?, ?)',
@@ -473,7 +474,6 @@ def add_ficha_tecnica():
     except Exception as e:
         print(f"Erro ao adicionar ficha técnica: {str(e)}")
         return jsonify({'error': f'Erro ao adicionar ficha técnica: {str(e)}'}), 500
-
 
 # ========================================
 # ROTAS DE VENDAS
