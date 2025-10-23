@@ -501,6 +501,189 @@ def registrar_venda_pdv():
     except (Exception, ValueError) as e:
         db.rollback()
         return jsonify({'error': str(e)}), 500
+# ========================================
+# ROTAS DE ESTATÍSTICAS E DASHBOARD
+# ========================================
+
+@app.route('/dashboard/estatisticas', methods=['GET'])
+def get_estatisticas_dashboard():
+    """Retorna estatísticas gerais para o dashboard"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # Total de vendas (últimos 30 dias)
+        query_vendas = """
+            SELECT COUNT(*) as total_vendas, 
+                   SUM(v.quantidade_vendida) as total_produtos_vendidos,
+                   SUM(v.quantidade_vendida * p.preco_venda) as receita_total
+            FROM vendas v
+            JOIN produtos p ON v.produto_id = p.id
+            WHERE v.data_venda >= CURRENT_DATE - INTERVAL '30 days'
+        """ if is_postgres else """
+            SELECT COUNT(*) as total_vendas,
+                   SUM(v.quantidade_vendida) as total_produtos_vendidos,
+                   SUM(v.quantidade_vendida * p.preco_venda) as receita_total
+            FROM vendas v
+            JOIN produtos p ON v.produto_id = p.id
+            WHERE v.data_venda >= date('now', '-30 days')
+        """
+        
+        cursor.execute(query_vendas)
+        stats_vendas = dict(cursor.fetchone())
+        
+        # Total de produtos cadastrados
+        cursor.execute("SELECT COUNT(*) as total FROM produtos")
+        total_produtos = dict(cursor.fetchone())['total']
+        
+        # Total de insumos cadastrados
+        cursor.execute("SELECT COUNT(*) as total FROM insumos")
+        total_insumos = dict(cursor.fetchone())['total']
+        
+        # Insumos com estoque baixo (menos de 10 unidades)
+        cursor.execute("SELECT COUNT(*) as total FROM insumos WHERE estoque_atual < 10")
+        insumos_baixo_estoque = dict(cursor.fetchone())['total']
+        
+        return jsonify({
+            'vendas_30_dias': stats_vendas['total_vendas'] or 0,
+            'produtos_vendidos_30_dias': stats_vendas['total_produtos_vendidos'] or 0,
+            'receita_30_dias': float(stats_vendas['receita_total'] or 0),
+            'total_produtos': total_produtos,
+            'total_insumos': total_insumos,
+            'alertas_estoque_baixo': insumos_baixo_estoque
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao buscar estatísticas: {str(e)}'}), 500
+
+
+@app.route('/dashboard/produtos-mais-vendidos', methods=['GET'])
+def get_produtos_mais_vendidos():
+    """Retorna os produtos mais vendidos (últimos 30 dias)"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        query = """
+            SELECT p.id, p.nome, 
+                   SUM(v.quantidade_vendida) as total_vendido,
+                   SUM(v.quantidade_vendida * p.preco_venda) as receita_produto
+            FROM vendas v
+            JOIN produtos p ON v.produto_id = p.id
+            WHERE v.data_venda >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY p.id, p.nome
+            ORDER BY total_vendido DESC
+            LIMIT 10
+        """ if is_postgres else """
+            SELECT p.id, p.nome,
+                   SUM(v.quantidade_vendida) as total_vendido,
+                   SUM(v.quantidade_vendida * p.preco_venda) as receita_produto
+            FROM vendas v
+            JOIN produtos p ON v.produto_id = p.id
+            WHERE v.data_venda >= date('now', '-30 days')
+            GROUP BY p.id, p.nome
+            ORDER BY total_vendido DESC
+            LIMIT 10
+        """
+        
+        cursor.execute(query)
+        produtos = cursor.fetchall()
+        
+        produtos_list = []
+        for p in produtos:
+            produto_dict = dict(p) if not isinstance(p, dict) else p
+            produtos_list.append({
+                'id': produto_dict['id'],
+                'nome': produto_dict['nome'],
+                'total_vendido': produto_dict['total_vendido'],
+                'receita': float(produto_dict['receita_produto'])
+            })
+        
+        return jsonify(produtos_list), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao buscar produtos mais vendidos: {str(e)}'}), 500
+
+
+@app.route('/dashboard/estoque-baixo', methods=['GET'])
+def get_estoque_baixo():
+    """Retorna insumos com estoque baixo (menos de 10 unidades)"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        
+        query = """
+            SELECT id, nome, unidade_medida, estoque_atual
+            FROM insumos
+            WHERE estoque_atual < 10
+            ORDER BY estoque_atual ASC
+        """
+        
+        cursor.execute(query)
+        insumos = cursor.fetchall()
+        
+        insumos_list = []
+        for i in insumos:
+            insumo_dict = dict(i) if not isinstance(i, dict) else i
+            insumos_list.append({
+                'id': insumo_dict['id'],
+                'nome': insumo_dict['nome'],
+                'unidade_medida': insumo_dict['unidade_medida'],
+                'estoque_atual': float(insumo_dict['estoque_atual'])
+            })
+        
+        return jsonify(insumos_list), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao buscar estoque baixo: {str(e)}'}), 500
+
+
+@app.route('/dashboard/vendas-por-dia', methods=['GET'])
+def get_vendas_por_dia():
+    """Retorna vendas agrupadas por dia (últimos 7 dias)"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        query = """
+            SELECT DATE(v.data_venda) as dia,
+                   COUNT(*) as total_vendas,
+                   SUM(v.quantidade_vendida * p.preco_venda) as receita_dia
+            FROM vendas v
+            JOIN produtos p ON v.produto_id = p.id
+            WHERE v.data_venda >= CURRENT_DATE - INTERVAL '7 days'
+            GROUP BY DATE(v.data_venda)
+            ORDER BY dia ASC
+        """ if is_postgres else """
+            SELECT DATE(v.data_venda) as dia,
+                   COUNT(*) as total_vendas,
+                   SUM(v.quantidade_vendida * p.preco_venda) as receita_dia
+            FROM vendas v
+            JOIN produtos p ON v.produto_id = p.id
+            WHERE v.data_venda >= date('now', '-7 days')
+            GROUP BY DATE(v.data_venda)
+            ORDER BY dia ASC
+        """
+        
+        cursor.execute(query)
+        vendas = cursor.fetchall()
+        
+        vendas_list = []
+        for v in vendas:
+            venda_dict = dict(v) if not isinstance(v, dict) else v
+            vendas_list.append({
+                'dia': str(venda_dict['dia']),
+                'total_vendas': venda_dict['total_vendas'],
+                'receita': float(venda_dict['receita_dia'])
+            })
+        
+        return jsonify(vendas_list), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao buscar vendas por dia: {str(e)}'}), 500
 
 if __name__ == '__main__':
     import os
