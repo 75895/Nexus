@@ -322,6 +322,13 @@ def registrar_venda_pdv():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    with app.app_context():
-        init_db() # Inicializa o DB na primeira execução, se não existir
+    import os
+    # Só inicializa o banco se ele não existir
+    if not os.path.exists(DATABASE):
+        with app.app_context():
+            init_db()
+            print("⚠️  Banco de dados criado pela primeira vez!")
+    else:
+        print("✅ Banco de dados já existe. Usando o banco existente.")
+    
     app.run(debug=True, host='0.0.0.0', port=5000)
