@@ -363,29 +363,44 @@ def get_produtos():
 
 @app.route('/produtos', methods=['POST'])
 def add_produto():
-    data = request.get_json()
-    nome = data['nome']
-    preco_venda = data['preco_venda']
-    
-    db = get_db()
-    cursor = db.cursor()
-    
-    is_postgres = os.environ.get('DATABASE_URL') is not None
-    if is_postgres:
-        cursor.execute(
-            'INSERT INTO produtos (nome, preco_venda) VALUES (%s, %s) RETURNING id',
-            (nome, preco_venda)
-        )
-        new_id = cursor.fetchone()[0]
-    else:
-        cursor.execute(
-            'INSERT INTO produtos (nome, preco_venda) VALUES (?, ?)',
-            (nome, preco_venda)
-        )
-        new_id = cursor.lastrowid
-    
-    db.commit()
-    return jsonify({'id': new_id, 'nome': nome}), 201
+    """Adiciona um novo produto"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        data = request.get_json()
+        
+        if not data or 'nome' not in data or 'preco_venda' not in data:
+            return jsonify({'error': 'Nome e preço de venda são obrigatórios'}), 400
+        
+        nome = data['nome'].strip()
+        preco_venda = float(data['preco_venda'])
+        
+        if not nome:
+            return jsonify({'error': 'Nome não pode estar vazio'}), 400
+        
+        if preco_venda <= 0:
+            return jsonify({'error': 'Preço deve ser maior que zero'}), 400
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        if is_postgres:
+            query = 'INSERT INTO produtos (nome, preco_venda) VALUES (%s, %s) RETURNING id, nome, preco_venda'
+            cursor.execute(query, (nome, preco_venda))
+            produto = dict(cursor.fetchone())
+        else:
+            query = 'INSERT INTO produtos (nome, preco_venda) VALUES (?, ?)'
+            cursor.execute(query, (nome, preco_venda))
+            produto_id = cursor.lastrowid
+            produto = {'id': produto_id, 'nome': nome, 'preco_venda': float(preco_venda)}
+        
+        db.commit()
+        return jsonify(produto), 201
+        
+    except ValueError as e:
+        return jsonify({'error': f'Valor inválido: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Erro ao adicionar produto: {str(e)}'}), 500
+
 
 # ========================================
 # ROTAS DE FICHA TÉCNICA
