@@ -2,6 +2,7 @@ DROP TABLE IF EXISTS insumos;
 DROP TABLE IF EXISTS produtos;
 DROP TABLE IF EXISTS ficha_tecnica;
 DROP TABLE IF EXISTS vendas;
+DROP TABLE IF EXISTS usuarios;
 
 CREATE TABLE insumos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,3 +34,10 @@ CREATE TABLE vendas (
     FOREIGN KEY (produto_id) REFERENCES produtos (id) ON DELETE CASCADE
 );
 
+-- Nova tabela para armazenar usuários com senhas seguras
+CREATE TABLE usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    data_criacao TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

@@ -1,7 +1,7 @@
-
 import sqlite3
 from flask import Flask, jsonify, request, g
 from flask_cors import CORS
+import bcrypt  # ← NOVA LINHA ADICIONADA
 
 app = Flask(__name__)
 CORS(app)
@@ -36,6 +36,106 @@ def initialize_db_route():
         return jsonify({'message': 'Banco de dados inicializado com sucesso!'})
     except Exception as e:
         return jsonify({'error': f'Erro ao inicializar o banco de dados: {e}'}), 500
+
+# ========================================
+# ✨ NOVAS ROTAS DE AUTENTICAÇÃO ✨
+# ========================================
+
+@app.route('/login', methods=['POST'])
+def login():
+    """
+    Rota para autenticação de usuários.
+    Recebe: { "username": "...", "password": "..." }
+    Retorna: { "success": true/false, "message": "..." }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validação básica dos dados recebidos
+        if not data or 'username' not in data or 'password' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Nome de usuário e senha são obrigatórios.'
+            }), 400
+        
+        username = data['username'].strip()
+        password = data['password']
+        
+        if not username or not password:
+            return jsonify({
+                'success': False,
+                'message': 'Nome de usuário e senha não podem estar vazios.'
+            }), 400
+        
+        # Busca o usuário no banco de dados
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute(
+            "SELECT id, username, password_hash FROM usuarios WHERE username = ?",
+            (username,)
+        )
+        usuario = cursor.fetchone()
+        
+        # Se o usuário não existe
+        if not usuario:
+            return jsonify({
+                'success': False,
+                'message': 'Usuário ou senha incorretos.'
+            }), 401
+        
+        # Recupera o hash da senha armazenado
+        password_hash_armazenado = usuario['password_hash'].encode('utf-8')
+        password_fornecida = password.encode('utf-8')
+        
+        # Verifica se a senha está correta usando bcrypt
+        if bcrypt.checkpw(password_fornecida, password_hash_armazenado):
+            return jsonify({
+                'success': True,
+                'message': 'Login realizado com sucesso!',
+                'user': {
+                    'id': usuario['id'],
+                    'username': usuario['username']
+                }
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Usuário ou senha incorretos.'
+            }), 401
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro no servidor: {str(e)}'
+        }), 500
+
+@app.route('/verificar_usuarios', methods=['GET'])
+def verificar_usuarios():
+    """
+    Rota auxiliar para verificar se existem usuários cadastrados.
+    Útil para debug e verificação inicial.
+    """
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) as total FROM usuarios")
+        resultado = cursor.fetchone()
+        total_usuarios = resultado['total']
+        
+        cursor.execute("SELECT id, username, data_criacao FROM usuarios")
+        usuarios = cursor.fetchall()
+        
+        return jsonify({
+            'total': total_usuarios,
+            'usuarios': [dict(row) for row in usuarios]
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'error': f'Erro ao verificar usuários: {str(e)}'}), 500
+
+# ========================================
+# ROTAS EXISTENTES (sem alterações)
+# ========================================
 
 # --- Rotas de Insumos (Estoque) ---
 
@@ -225,4 +325,3 @@ if __name__ == '__main__':
     with app.app_context():
         init_db() # Inicializa o DB na primeira execução, se não existir
     app.run(debug=True, host='0.0.0.0', port=5000)
-

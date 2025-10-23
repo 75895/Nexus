@@ -51,13 +51,65 @@
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            // Implementação de login simplificada para protótipo
-            // Em um sistema real, você faria uma requisição ao backend para autenticação
-            window.location.href = 'dashboard.html';
-        });
-    </script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Pega os valores dos campos
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        // Validação básica
+        if (!username || !password) {
+            alert('Por favor, preencha usuário e senha.');
+            return;
+        }
+        
+        try {
+            // Faz a requisição para o backend
+            const response = await fetch('http://localhost:5000/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                } )
+            });
+            
+            // Converte a resposta para JSON
+            const resultado = await response.json();
+            
+            // Verifica se o login foi bem-sucedido
+            if (resultado.success) {
+                // Login bem-sucedido!
+                console.log('Login realizado com sucesso:', resultado);
+                
+                // Salva informações do usuário
+                localStorage.setItem('usuario_id', resultado.user.id);
+                localStorage.setItem('usuario_nome', resultado.user.username);
+                
+                // Mostra mensagem de sucesso
+                alert('Bem-vindo(a), ' + resultado.user.username + '!');
+                
+                // Redireciona para o dashboard
+                window.location.href = 'dashboard.html';
+                
+            } else {
+                // Login falhou - mostra a mensagem de erro
+                alert('❌ ' + resultado.message);
+                
+                // Limpa o campo de senha
+                document.getElementById('password').value = '';
+            }
+            
+        } catch (erro) {
+            // Erro de conexão
+            console.error('Erro ao fazer login:', erro);
+            alert('❌ Erro ao conectar com o servidor. Verifique se o backend está rodando.');
+        }
+    });
+</script>
 </body>
 </html>
 

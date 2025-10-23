@@ -5,89 +5,167 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Sistema de Gestão de Restaurante</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .card-icon {
+            font-size: 3rem; /* Aumenta o tamanho dos ícones */
+            line-height: 1;
+        }
+        .card-title {
+            font-weight: 600; /* Semibold */
+            color: #333;
+        }
+        .card-description {
+            color: #666;
+        }
+        .navbar-brand {
+            font-weight: 700; /* Bold */
+            color: #222;
+        }
+        .btn-logout {
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn-logout:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+        .dashboard-header {
+            color: #333;
+        }
+        .card-link {
+            display: block;
+            height: 100%; /* Garante que os cards tenham a mesma altura em uma linha */
+        }
+        .card-item {
+            background-color: #ffffff;
+            border-radius: 0.75rem; /* Bordas mais arredondadas */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Sombra mais suave e proeminente */
+            padding: 1.5rem;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .card-item:hover {
+            transform: translateY(-5px); /* Efeito de "levantar" ao passar o mouse */
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+        .footer {
+            background-color: #333;
+            color: #eee;
+            padding: 2rem 0;
+            text-align: center;
+            margin-top: 3rem;
+        }
+        .footer a {
+            color: #a78bfa; /* purple-400 */
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-50 min-h-screen flex flex-col">
     <!-- Navbar -->
-    <nav class="bg-white shadow-md">
-        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-gray-800">Sistema de Gestão - Restaurante</h1>
-            <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
+    <nav class="bg-white shadow-sm py-4">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <h1 class="text-3xl navbar-brand">Gestão <span class="text-indigo-600">NEXUS</span></h1>
+            <button onclick="logout()" class="btn-logout">
                 Sair
             </button>
         </div>
     </nav>
 
     <!-- Container Principal -->
-    <div class="container mx-auto px-6 py-8">
-        <h2 class="text-3xl font-semibold text-gray-700 mb-6">Dashboard</h2>
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-grow">
+        <h2 class="text-4xl font-bold dashboard-header mb-8">Dashboard</h2>
 
         <!-- Grid de Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <!-- Card: Insumos -->
-            <a href="insumos.html" class="block">
-                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition duration-200 cursor-pointer">
-                    <div class="flex items-center justify-between">
+            <a href="insumos.html" class="card-link">
+                <div class="card-item">
+                    <div class="flex items-start justify-between mb-4">
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-700">Insumos</h3>
-                            <p class="text-gray-500 mt-2">Gerenciar estoque de insumos</p>
+                            <h3 class="text-2xl card-title">Insumos</h3>
+                            <p class="text-md card-description mt-1">Gerenciar estoque de insumos</p>
                         </div>
-                        <div class="text-4xl text-blue-500">
+                        <div class="card-icon text-blue-500">
                             📦
                         </div>
                     </div>
+                    <span class="text-sm text-indigo-500 hover:underline">Ver detalhes &rarr;</span>
                 </div>
             </a>
 
             <!-- Card: Produtos -->
-            <a href="produtos.html" class="block">
-                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition duration-200 cursor-pointer">
-                    <div class="flex items-center justify-between">
+            <a href="produtos.html" class="card-link">
+                <div class="card-item">
+                    <div class="flex items-start justify-between mb-4">
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-700">Produtos</h3>
-                            <p class="text-gray-500 mt-2">Cadastrar pratos e lanches</p>
+                            <h3 class="text-2xl card-title">Produtos</h3>
+                            <p class="text-md card-description mt-1">Cadastrar pratos e lanches</p>
                         </div>
-                        <div class="text-4xl text-green-500">
+                        <div class="card-icon text-green-500">
                             🍔
                         </div>
                     </div>
+                    <span class="text-sm text-indigo-500 hover:underline">Ver detalhes &rarr;</span>
                 </div>
             </a>
 
             <!-- Card: Fichas Técnicas -->
-            <a href="fichas_tecnicas.html" class="block">
-                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition duration-200 cursor-pointer">
-                    <div class="flex items-center justify-between">
+            <a href="fichas_tecnicas.html" class="card-link">
+                <div class="card-item">
+                    <div class="flex items-start justify-between mb-4">
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-700">Fichas Técnicas</h3>
-                            <p class="text-gray-500 mt-2">Criar fichas técnicas</p>
+                            <h3 class="text-2xl card-title">Fichas Técnicas</h3>
+                            <p class="text-md card-description mt-1">Criar fichas técnicas</p>
                         </div>
-                        <div class="text-4xl text-purple-500">
+                        <div class="card-icon text-purple-500">
                             📋
                         </div>
                     </div>
+                    <span class="text-sm text-indigo-500 hover:underline">Ver detalhes &rarr;</span>
                 </div>
             </a>
 
             <!-- Card: Vendas -->
-            <a href="vendas.html" class="block">
-                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition duration-200 cursor-pointer">
-                    <div class="flex items-center justify-between">
+            <a href="vendas.html" class="card-link">
+                <div class="card-item">
+                    <div class="flex items-start justify-between mb-4">
                         <div>
-                            <h3 class="text-xl font-semibold text-gray-700">Vendas</h3>
-                            <p class="text-gray-500 mt-2">Registrar vendas</p>
+                            <h3 class="text-2xl card-title">Vendas</h3>
+                            <p class="text-md card-description mt-1">Registrar vendas</p>
                         </div>
-                        <div class="text-4xl text-yellow-500">
+                        <div class="card-icon text-yellow-500">
                             💰
                         </div>
                     </div>
+                    <span class="text-sm text-indigo-500 hover:underline">Ver detalhes &rarr;</span>
                 </div>
             </a>
         </div>
     </div>
 
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2025 Sistema de Gestão de Restaurante. Todos os direitos reservados.</p>
+        <p>Desenvolvido com ❤️ por <a href="#">Bruno Silvestre</a></p>
+    </footer>
+
     <script>
         function logout() {
-            window.location.href = 'index.html';
+            // Implementar lógica de logout aqui, como limpar tokens de sessão, etc.
+            alert('Você foi desconectado!'); // Apenas para demonstração
+            window.location.href = 'index.html'; // Redireciona para a página de login ou inicial
         }
     </script>
 </body>
