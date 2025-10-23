@@ -24,14 +24,15 @@ def get_db():
             if database_url.startswith('postgres://'):
                 database_url = database_url.replace('postgres://', 'postgresql://', 1)
             
-            db = g._database = psycopg2.connect(database_url)
-            db.row_factory = RealDictCursor
+            # Para PostgreSQL, usamos cursor_factory em vez de row_factory
+            db = g._database = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
         else:
             # Desenvolvimento: SQLite
             db = g._database = sqlite3.connect(DATABASE)
             db.row_factory = sqlite3.Row
     
     return db
+
 
 @app.teardown_appcontext
 def close_connection(exception):
