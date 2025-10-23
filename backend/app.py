@@ -474,6 +474,7 @@ def add_ficha_tecnica():
         print(f"Erro ao adicionar ficha técnica: {str(e)}")
         return jsonify({'error': f'Erro ao adicionar ficha técnica: {str(e)}'}), 500
 
+
 # ========================================
 # ROTAS DE VENDAS
 # ========================================
