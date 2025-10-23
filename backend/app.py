@@ -1,7 +1,8 @@
+import os
 import sqlite3
 from flask import Flask, jsonify, request, g
 from flask_cors import CORS
-import bcrypt  # ← NOVA LINHA ADICIONADA
+import bcrypt
 
 app = Flask(__name__)
 CORS(app)
@@ -9,10 +10,27 @@ CORS(app)
 DATABASE = 'restaurante.db'
 
 def get_db():
+    """Retorna conexão com o banco de dados (SQLite local ou PostgreSQL no Render)"""
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
-        db.row_factory = sqlite3.Row # Para retornar linhas como dicionários
+        database_url = os.environ.get('DATABASE_URL')
+        
+        if database_url:
+            # Produção: PostgreSQL
+            import psycopg2
+            from psycopg2.extras import RealDictCursor
+            
+            # Corrige URL se necessário
+            if database_url.startswith('postgres://'):
+                database_url = database_url.replace('postgres://', 'postgresql://', 1)
+            
+            db = g._database = psycopg2.connect(database_url)
+            db.row_factory = RealDictCursor
+        else:
+            # Desenvolvimento: SQLite
+            db = g._database = sqlite3.connect(DATABASE)
+            db.row_factory = sqlite3.Row
+    
     return db
 
 @app.teardown_appcontext
@@ -22,12 +40,70 @@ def close_connection(exception):
         db.close()
 
 def init_db():
+    """Inicializa o banco de dados com as tabelas necessárias"""
     with app.app_context():
         db = get_db()
-        with app.open_resource('schema.sql', mode='r') as f:
-            db.cursor().executescript(f.read())
+        cursor = db.cursor()
+        
+        # Verifica se está usando PostgreSQL ou SQLite
+        database_url = os.environ.get('DATABASE_URL')
+        is_postgres = database_url is not None
+        
+        # Ajusta o tipo de dados conforme o banco
+        if is_postgres:
+            # PostgreSQL
+            schema = """
+            DROP TABLE IF EXISTS vendas CASCADE;
+            DROP TABLE IF EXISTS ficha_tecnica CASCADE;
+            DROP TABLE IF EXISTS produtos CASCADE;
+            DROP TABLE IF EXISTS insumos CASCADE;
+            DROP TABLE IF EXISTS usuarios CASCADE;
+
+            CREATE TABLE IF NOT EXISTS insumos (
+                id SERIAL PRIMARY KEY,
+                nome TEXT NOT NULL,
+                unidade_medida TEXT NOT NULL,
+                estoque_atual REAL NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS produtos (
+                id SERIAL PRIMARY KEY,
+                nome TEXT NOT NULL,
+                preco_venda REAL NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS ficha_tecnica (
+                id SERIAL PRIMARY KEY,
+                produto_id INTEGER NOT NULL,
+                insumo_id INTEGER NOT NULL,
+                quantidade_necessaria REAL NOT NULL,
+                FOREIGN KEY (produto_id) REFERENCES produtos (id) ON DELETE CASCADE,
+                FOREIGN KEY (insumo_id) REFERENCES insumos (id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS vendas (
+                id SERIAL PRIMARY KEY,
+                produto_id INTEGER NOT NULL,
+                quantidade_vendida INTEGER NOT NULL,
+                data_venda TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (produto_id) REFERENCES produtos (id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                data_criacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        else:
+            # SQLite
+            with app.open_resource('schema.sql', mode='r') as f:
+                schema = f.read()
+        
+        cursor.executescript(schema) if not is_postgres else [cursor.execute(stmt) for stmt in schema.split(';') if stmt.strip()]
         db.commit()
-        print("Banco de dados inicializado com sucesso!")
+        print("✅ Banco de dados inicializado com sucesso!")
 
 @app.route('/init_db')
 def initialize_db_route():
@@ -38,20 +114,15 @@ def initialize_db_route():
         return jsonify({'error': f'Erro ao inicializar o banco de dados: {e}'}), 500
 
 # ========================================
-# ✨ NOVAS ROTAS DE AUTENTICAÇÃO ✨
+# ROTAS DE AUTENTICAÇÃO
 # ========================================
 
 @app.route('/login', methods=['POST'])
 def login():
-    """
-    Rota para autenticação de usuários.
-    Recebe: { "username": "...", "password": "..." }
-    Retorna: { "success": true/false, "message": "..." }
-    """
+    """Rota para autenticação de usuários"""
     try:
         data = request.get_json()
         
-        # Validação básica dos dados recebidos
         if not data or 'username' not in data or 'password' not in data:
             return jsonify({
                 'success': False,
@@ -67,27 +138,27 @@ def login():
                 'message': 'Nome de usuário e senha não podem estar vazios.'
             }), 400
         
-        # Busca o usuário no banco de dados
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
-            "SELECT id, username, password_hash FROM usuarios WHERE username = ?",
+            "SELECT id, username, password_hash FROM usuarios WHERE username = %s" if os.environ.get('DATABASE_URL') else "SELECT id, username, password_hash FROM usuarios WHERE username = ?",
             (username,)
         )
         usuario = cursor.fetchone()
         
-        # Se o usuário não existe
         if not usuario:
             return jsonify({
                 'success': False,
                 'message': 'Usuário ou senha incorretos.'
             }), 401
         
-        # Recupera o hash da senha armazenado
+        # Converte para dict se necessário (PostgreSQL)
+        if hasattr(usuario, '_asdict'):
+            usuario = dict(usuario)
+        
         password_hash_armazenado = usuario['password_hash'].encode('utf-8')
         password_fornecida = password.encode('utf-8')
         
-        # Verifica se a senha está correta usando bcrypt
         if bcrypt.checkpw(password_fornecida, password_hash_armazenado):
             return jsonify({
                 'success': True,
@@ -111,33 +182,36 @@ def login():
 
 @app.route('/verificar_usuarios', methods=['GET'])
 def verificar_usuarios():
-    """
-    Rota auxiliar para verificar se existem usuários cadastrados.
-    Útil para debug e verificação inicial.
-    """
+    """Rota auxiliar para verificar usuários cadastrados"""
     try:
         db = get_db()
         cursor = db.cursor()
         cursor.execute("SELECT COUNT(*) as total FROM usuarios")
         resultado = cursor.fetchone()
-        total_usuarios = resultado['total']
+        total_usuarios = resultado['total'] if isinstance(resultado, dict) else resultado[0]
         
         cursor.execute("SELECT id, username, data_criacao FROM usuarios")
         usuarios = cursor.fetchall()
         
+        # Converte para dict se necessário
+        usuarios_list = []
+        for u in usuarios:
+            if hasattr(u, '_asdict'):
+                usuarios_list.append(dict(u))
+            else:
+                usuarios_list.append(dict(u))
+        
         return jsonify({
             'total': total_usuarios,
-            'usuarios': [dict(row) for row in usuarios]
+            'usuarios': usuarios_list
         }), 200
     
     except Exception as e:
         return jsonify({'error': f'Erro ao verificar usuários: {str(e)}'}), 500
 
 # ========================================
-# ROTAS EXISTENTES (sem alterações)
+# ROTAS DE INSUMOS
 # ========================================
-
-# --- Rotas de Insumos (Estoque) ---
 
 @app.route('/insumos', methods=['GET'])
 def get_insumos():
@@ -156,12 +230,22 @@ def add_insumo():
     
     db = get_db()
     cursor = db.cursor()
-    cursor.execute(
-        'INSERT INTO insumos (nome, unidade_medida, estoque_atual) VALUES (?, ?, ?)',
-        (nome, unidade_medida, estoque_atual)
-    )
+    
+    is_postgres = os.environ.get('DATABASE_URL') is not None
+    if is_postgres:
+        cursor.execute(
+            'INSERT INTO insumos (nome, unidade_medida, estoque_atual) VALUES (%s, %s, %s) RETURNING id',
+            (nome, unidade_medida, estoque_atual)
+        )
+        new_id = cursor.fetchone()[0]
+    else:
+        cursor.execute(
+            'INSERT INTO insumos (nome, unidade_medida, estoque_atual) VALUES (?, ?, ?)',
+            (nome, unidade_medida, estoque_atual)
+        )
+        new_id = cursor.lastrowid
+    
     db.commit()
-    new_id = cursor.lastrowid
     return jsonify({'id': new_id, 'nome': nome}), 201
 
 @app.route('/insumos/<int:insumo_id>', methods=['PUT'])
@@ -169,10 +253,11 @@ def update_insumo(insumo_id):
     data = request.get_json()
     db = get_db()
     cursor = db.cursor()
-    cursor.execute(
-        'UPDATE insumos SET nome = ?, unidade_medida = ?, estoque_atual = ? WHERE id = ?',
-        (data['nome'], data['unidade_medida'], data['estoque_atual'], insumo_id)
-    )
+    
+    is_postgres = os.environ.get('DATABASE_URL') is not None
+    query = 'UPDATE insumos SET nome = %s, unidade_medida = %s, estoque_atual = %s WHERE id = %s' if is_postgres else 'UPDATE insumos SET nome = ?, unidade_medida = ?, estoque_atual = ? WHERE id = ?'
+    
+    cursor.execute(query, (data['nome'], data['unidade_medida'], data['estoque_atual'], insumo_id))
     db.commit()
     return jsonify({'message': 'Insumo atualizado com sucesso'})
 
@@ -181,17 +266,22 @@ def delete_insumo(insumo_id):
     db = get_db()
     cursor = db.cursor()
     
-    # Verifica se o insumo está em alguma ficha técnica antes de excluir
-    cursor.execute('SELECT 1 FROM ficha_tecnica WHERE insumo_id = ?', (insumo_id,))
+    is_postgres = os.environ.get('DATABASE_URL') is not None
+    query_check = 'SELECT 1 FROM ficha_tecnica WHERE insumo_id = %s' if is_postgres else 'SELECT 1 FROM ficha_tecnica WHERE insumo_id = ?'
+    query_delete = 'DELETE FROM insumos WHERE id = %s' if is_postgres else 'DELETE FROM insumos WHERE id = ?'
+    
+    cursor.execute(query_check, (insumo_id,))
     ficha = cursor.fetchone()
     if ficha:
         return jsonify({'error': 'Não é possível excluir. Este insumo está sendo usado em uma ficha técnica.'}), 400
         
-    cursor.execute('DELETE FROM insumos WHERE id = ?', (insumo_id,))
+    cursor.execute(query_delete, (insumo_id,))
     db.commit()
-    return jsonify({'message': 'Insumo excluído com sucesso'}) 
+    return jsonify({'message': 'Insumo excluído com sucesso'})
 
-# --- Rotas de Produtos (Cardápio) ---
+# ========================================
+# ROTAS DE PRODUTOS
+# ========================================
 
 @app.route('/produtos', methods=['GET'])
 def get_produtos():
@@ -209,29 +299,47 @@ def add_produto():
     
     db = get_db()
     cursor = db.cursor()
-    cursor.execute(
-        'INSERT INTO produtos (nome, preco_venda) VALUES (?, ?)',
-        (nome, preco_venda)
-    )
+    
+    is_postgres = os.environ.get('DATABASE_URL') is not None
+    if is_postgres:
+        cursor.execute(
+            'INSERT INTO produtos (nome, preco_venda) VALUES (%s, %s) RETURNING id',
+            (nome, preco_venda)
+        )
+        new_id = cursor.fetchone()[0]
+    else:
+        cursor.execute(
+            'INSERT INTO produtos (nome, preco_venda) VALUES (?, ?)',
+            (nome, preco_venda)
+        )
+        new_id = cursor.lastrowid
+    
     db.commit()
-    new_id = cursor.lastrowid
     return jsonify({'id': new_id, 'nome': nome}), 201
 
-# --- Rotas de Ficha Técnica ---
+# ========================================
+# ROTAS DE FICHA TÉCNICA
+# ========================================
 
 @app.route('/fichas_tecnicas/<int:produto_id>', methods=['GET'])
 def get_ficha_tecnica(produto_id):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute(
-        '''
+    
+    is_postgres = os.environ.get('DATABASE_URL') is not None
+    query = '''
+        SELECT ft.id, ft.quantidade_necessaria, i.nome as insumo_nome, i.unidade_medida, i.id as insumo_id
+        FROM ficha_tecnica ft
+        JOIN insumos i ON ft.insumo_id = i.id
+        WHERE ft.produto_id = %s
+    ''' if is_postgres else '''
         SELECT ft.id, ft.quantidade_necessaria, i.nome as insumo_nome, i.unidade_medida, i.id as insumo_id
         FROM ficha_tecnica ft
         JOIN insumos i ON ft.insumo_id = i.id
         WHERE ft.produto_id = ?
-        ''',
-        (produto_id,)
-    )
+    '''
+    
+    cursor.execute(query, (produto_id,))
     fichas = cursor.fetchall()
     return jsonify([dict(row) for row in fichas])
 
@@ -244,15 +352,27 @@ def add_ficha_tecnica():
     
     db = get_db()
     cursor = db.cursor()
-    cursor.execute(
-        'INSERT INTO ficha_tecnica (produto_id, insumo_id, quantidade_necessaria) VALUES (?, ?, ?)',
-        (produto_id, insumo_id, quantidade_necessaria)
-    )
+    
+    is_postgres = os.environ.get('DATABASE_URL') is not None
+    if is_postgres:
+        cursor.execute(
+            'INSERT INTO ficha_tecnica (produto_id, insumo_id, quantidade_necessaria) VALUES (%s, %s, %s) RETURNING id',
+            (produto_id, insumo_id, quantidade_necessaria)
+        )
+        new_id = cursor.fetchone()[0]
+    else:
+        cursor.execute(
+            'INSERT INTO ficha_tecnica (produto_id, insumo_id, quantidade_necessaria) VALUES (?, ?, ?)',
+            (produto_id, insumo_id, quantidade_necessaria)
+        )
+        new_id = cursor.lastrowid
+    
     db.commit()
-    new_id = cursor.lastrowid
     return jsonify({'id': new_id}), 201
 
-# --- Rota de Vendas (PDV - Ponto de Venda) ---
+# ========================================
+# ROTAS DE VENDAS
+# ========================================
 
 @app.route('/vendas', methods=['POST'])
 def registrar_venda_pdv():
@@ -264,55 +384,46 @@ def registrar_venda_pdv():
 
     db = get_db()
     cursor = db.cursor()
+    
+    is_postgres = os.environ.get('DATABASE_URL') is not None
 
     try:
-        # Inicia a transação
-        # SQLite gerencia transações implicitamente com commit/rollback
         for item in itens_carrinho:
             produto_id = item['produto_id']
             quantidade_vendida = item['quantidade']
 
-            # 1. Buscar a ficha técnica do produto
-            cursor.execute(
-                'SELECT insumo_id, quantidade_necessaria FROM ficha_tecnica WHERE produto_id = ?',
-                (produto_id,)
-            )
+            query_ficha = 'SELECT insumo_id, quantidade_necessaria FROM ficha_tecnica WHERE produto_id = %s' if is_postgres else 'SELECT insumo_id, quantidade_necessaria FROM ficha_tecnica WHERE produto_id = ?'
+            cursor.execute(query_ficha, (produto_id,))
             ficha_tecnica = cursor.fetchall()
 
             if not ficha_tecnica:
                 raise ValueError(f'Produto ID {produto_id} sem ficha técnica cadastrada.')
 
-            # 2. Para cada insumo, verificar e dar baixa no estoque
             for row in ficha_tecnica:
-                insumo_id = row['insumo_id']
-                necessario_por_unidade = row['quantidade_necessaria']
+                row_dict = dict(row) if not isinstance(row, dict) else row
+                insumo_id = row_dict['insumo_id']
+                necessario_por_unidade = row_dict['quantidade_necessaria']
                 necessario_total = necessario_por_unidade * quantidade_vendida
 
-                cursor.execute(
-                    'SELECT nome, estoque_atual FROM insumos WHERE id = ?',
-                    (insumo_id,)
-                )
+                query_insumo = 'SELECT nome, estoque_atual FROM insumos WHERE id = %s' if is_postgres else 'SELECT nome, estoque_atual FROM insumos WHERE id = ?'
+                cursor.execute(query_insumo, (insumo_id,))
                 resultado_insumo = cursor.fetchone()
+                
                 if resultado_insumo is None:
                     raise ValueError(f"Insumo ID {insumo_id} não encontrado.")
 
-                insumo_nome = resultado_insumo['nome']
-                estoque_atual = resultado_insumo['estoque_atual']
+                insumo_dict = dict(resultado_insumo) if not isinstance(resultado_insumo, dict) else resultado_insumo
+                insumo_nome = insumo_dict['nome']
+                estoque_atual = insumo_dict['estoque_atual']
 
                 if estoque_atual < necessario_total:
                     raise ValueError(f'Estoque insuficiente para o insumo: "{insumo_nome}". Necessário: {necessario_total}, Disponível: {estoque_atual}')
 
-                # Realiza a baixa
-                cursor.execute(
-                    'UPDATE insumos SET estoque_atual = estoque_atual - ? WHERE id = ?',
-                    (necessario_total, insumo_id)
-                )
+                query_update = 'UPDATE insumos SET estoque_atual = estoque_atual - %s WHERE id = %s' if is_postgres else 'UPDATE insumos SET estoque_atual = estoque_atual - ? WHERE id = ?'
+                cursor.execute(query_update, (necessario_total, insumo_id))
             
-            # 3. Registrar a venda
-            cursor.execute(
-                'INSERT INTO vendas (produto_id, quantidade_vendida, data_venda) VALUES (?, ?, CURRENT_TIMESTAMP)',
-                (produto_id, quantidade_vendida)
-            )
+            query_venda = 'INSERT INTO vendas (produto_id, quantidade_vendida, data_venda) VALUES (%s, %s, CURRENT_TIMESTAMP)' if is_postgres else 'INSERT INTO vendas (produto_id, quantidade_vendida, data_venda) VALUES (?, ?, CURRENT_TIMESTAMP)'
+            cursor.execute(query_venda, (produto_id, quantidade_vendida))
         
         db.commit()
         return jsonify({'message': 'Venda registrada e estoque atualizado com sucesso!'}), 200
