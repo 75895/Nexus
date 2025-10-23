@@ -209,6 +209,75 @@ def verificar_usuarios():
     
     except Exception as e:
         return jsonify({'error': f'Erro ao verificar usuários: {str(e)}'}), 500
+@app.route('/cadastrar', methods=['POST'])
+def cadastrar_usuario():
+    """Rota para cadastrar novos usuários"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'username' not in data or 'password' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Nome de usuário e senha são obrigatórios.'
+            }), 400
+        
+        username = data['username'].strip()
+        password = data['password']
+        
+        if not username or not password:
+            return jsonify({
+                'success': False,
+                'message': 'Nome de usuário e senha não podem estar vazios.'
+            }), 400
+        
+        if len(username) < 3:
+            return jsonify({
+                'success': False,
+                'message': 'O nome de usuário deve ter pelo menos 3 caracteres.'
+            }), 400
+        
+        if len(password) < 4:
+            return jsonify({
+                'success': False,
+                'message': 'A senha deve ter pelo menos 4 caracteres.'
+            }), 400
+        
+        # Verifica se o usuário já existe
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        query_check = "SELECT id FROM usuarios WHERE username = %s" if is_postgres else "SELECT id FROM usuarios WHERE username = ?"
+        cursor.execute(query_check, (username,))
+        usuario_existente = cursor.fetchone()
+        
+        if usuario_existente:
+            return jsonify({
+                'success': False,
+                'message': f'O usuário "{username}" já existe. Escolha outro nome.'
+            }), 400
+        
+        # Cria o hash da senha
+        password_bytes = password.encode('utf-8')
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password_bytes, salt)
+        hashed_password_str = hashed_password.decode('utf-8')
+        
+        # Insere o novo usuário
+        query_insert = "INSERT INTO usuarios (username, password_hash) VALUES (%s, %s)" if is_postgres else "INSERT INTO usuarios (username, password_hash) VALUES (?, ?)"
+        cursor.execute(query_insert, (username, hashed_password_str))
+        db.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Usuário "{username}" cadastrado com sucesso!'
+        }), 201
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro no servidor: {str(e)}'
+        }), 500
 
 # ========================================
 # ROTAS DE INSUMOS
