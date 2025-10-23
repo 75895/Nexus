@@ -283,6 +283,24 @@ def cadastrar_usuario():
 # ROTAS DE INSUMOS
 # ========================================
 
+@app.route('/api/insumos', methods=['GET'])
+def get_insumos():
+    """Lista todos os insumos"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('SELECT id, nome, unidade_medida, estoque_atual FROM insumos ORDER BY nome')
+        insumos = cursor.fetchall()
+        
+        # Converte para lista de dicionários
+        insumos_list = []
+        for insumo in insumos:
+            insumos_list.append(dict(insumo))
+        
+        return jsonify(insumos_list), 200
+    except Exception as e:
+        return jsonify({'error': f'Erro ao buscar insumos: {str(e)}'}), 500
+
 @app.route('/insumos', methods=['POST'])
 def add_insumo():
     """Adiciona um novo insumo"""
