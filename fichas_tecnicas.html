@@ -164,7 +164,7 @@
         // Carregar insumos para o formulário
         async function carregarInsumos() {
             try {
-                const response = await fetch(`${API_URL}/insumos`);
+                const response = await fetch(`${API_URL}/api/insumos`);
                 const insumos = await response.json();
 
                 const select = document.getElementById('insumo_id');
@@ -247,4 +247,3 @@
     </script>
 </body>
 </html>
-
