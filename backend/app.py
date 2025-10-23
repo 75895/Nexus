@@ -54,6 +54,9 @@ def init_db():
         if is_postgres:
             # PostgreSQL
             schema = """
+            DROP TABLE IF EXISTS itens_comanda CASCADE;
+            DROP TABLE IF EXISTS comandas CASCADE;
+            DROP TABLE IF EXISTS mesas CASCADE;
             DROP TABLE IF EXISTS vendas CASCADE;
             DROP TABLE IF EXISTS ficha_tecnica CASCADE;
             DROP TABLE IF EXISTS produtos CASCADE;
@@ -95,6 +98,38 @@ def init_db():
                 username TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 data_criacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS mesas (
+                id SERIAL PRIMARY KEY,
+                numero INTEGER NOT NULL UNIQUE,
+                capacidade INTEGER NOT NULL,
+                localizacao TEXT,
+                status TEXT NOT NULL DEFAULT 'disponivel',
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS comandas (
+                id SERIAL PRIMARY KEY,
+                mesa_id INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'aberta',
+                total DECIMAL(10,2) DEFAULT 0,
+                data_abertura TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                data_fechamento TIMESTAMP,
+                FOREIGN KEY (mesa_id) REFERENCES mesas(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS itens_comanda (
+                id SERIAL PRIMARY KEY,
+                comanda_id INTEGER NOT NULL,
+                produto_id INTEGER NOT NULL,
+                quantidade INTEGER NOT NULL,
+                preco_unitario DECIMAL(10,2) NOT NULL,
+                subtotal DECIMAL(10,2) NOT NULL,
+                observacoes TEXT,
+                data_adicao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (comanda_id) REFERENCES comandas(id) ON DELETE CASCADE,
+                FOREIGN KEY (produto_id) REFERENCES produtos(id)
             );
             """
         else:
@@ -536,6 +571,619 @@ def registrar_venda_pdv():
     except (Exception, ValueError) as e:
         db.rollback()
         return jsonify({'error': str(e)}), 500
+# ========================================
+# ROTAS DE MESAS
+# ========================================
+
+@app.route('/api/mesas', methods=['GET'])
+def get_mesas():
+    """Lista todas as mesas com status e comanda ativa"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # Query para buscar mesas com informações de comanda ativa
+        query = '''
+            SELECT 
+                m.id, m.numero, m.capacidade, m.localizacao, m.status,
+                c.id as comanda_id, c.total as comanda_total
+            FROM mesas m
+            LEFT JOIN comandas c ON m.id = c.mesa_id AND c.status = 'aberta'
+            ORDER BY m.numero
+        '''
+        
+        cursor.execute(query)
+        mesas = cursor.fetchall()
+        
+        mesas_list = []
+        for mesa in mesas:
+            mesa_dict = dict(mesa) if not isinstance(mesa, dict) else mesa
+            mesas_list.append({
+                'id': mesa_dict['id'],
+                'numero': mesa_dict['numero'],
+                'capacidade': mesa_dict['capacidade'],
+                'localizacao': mesa_dict['localizacao'],
+                'status': mesa_dict['status'],
+                'comanda_ativa': {
+                    'id': mesa_dict.get('comanda_id'),
+                    'total': float(mesa_dict.get('comanda_total', 0)) if mesa_dict.get('comanda_total') else 0
+                } if mesa_dict.get('comanda_id') else None
+            })
+        
+        return jsonify(mesas_list), 200
+    except Exception as e:
+        print(f"Erro ao buscar mesas: {str(e)}")
+        return jsonify({'error': f'Erro ao buscar mesas: {str(e)}'}), 500
+
+
+@app.route('/api/mesas', methods=['POST'])
+def add_mesa():
+    """Cadastra uma nova mesa"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'numero' not in data or 'capacidade' not in data:
+            return jsonify({'error': 'Número e capacidade são obrigatórios'}), 400
+        
+        numero = int(data['numero'])
+        capacidade = int(data['capacidade'])
+        localizacao = data.get('localizacao', '')
+        
+        if numero <= 0 or capacidade <= 0:
+            return jsonify({'error': 'Número e capacidade devem ser maiores que zero'}), 400
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        if is_postgres:
+            cursor.execute(
+                'INSERT INTO mesas (numero, capacidade, localizacao) VALUES (%s, %s, %s) RETURNING id, numero, capacidade, localizacao, status',
+                (numero, capacidade, localizacao)
+            )
+            result = cursor.fetchone()
+            mesa = dict(result) if isinstance(result, dict) else {
+                'id': result[0], 'numero': result[1], 'capacidade': result[2],
+                'localizacao': result[3], 'status': result[4]
+            }
+        else:
+            cursor.execute(
+                'INSERT INTO mesas (numero, capacidade, localizacao) VALUES (?, ?, ?)',
+                (numero, capacidade, localizacao)
+            )
+            new_id = cursor.lastrowid
+            mesa = {
+                'id': new_id,
+                'numero': numero,
+                'capacidade': capacidade,
+                'localizacao': localizacao,
+                'status': 'disponivel'
+            }
+        
+        db.commit()
+        return jsonify(mesa), 201
+        
+    except Exception as e:
+        print(f"Erro ao adicionar mesa: {str(e)}")
+        return jsonify({'error': f'Erro ao adicionar mesa: {str(e)}'}), 500
+
+
+@app.route('/api/mesas/<int:mesa_id>', methods=['PUT'])
+def update_mesa(mesa_id):
+    """Atualiza informações de uma mesa"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'Dados não fornecidos'}), 400
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # Monta query dinamicamente baseado nos campos fornecidos
+        updates = []
+        values = []
+        
+        if 'numero' in data:
+            updates.append('numero = %s' if is_postgres else 'numero = ?')
+            values.append(int(data['numero']))
+        if 'capacidade' in data:
+            updates.append('capacidade = %s' if is_postgres else 'capacidade = ?')
+            values.append(int(data['capacidade']))
+        if 'localizacao' in data:
+            updates.append('localizacao = %s' if is_postgres else 'localizacao = ?')
+            values.append(data['localizacao'])
+        if 'status' in data:
+            updates.append('status = %s' if is_postgres else 'status = ?')
+            values.append(data['status'])
+        
+        if not updates:
+            return jsonify({'error': 'Nenhum campo para atualizar'}), 400
+        
+        values.append(mesa_id)
+        query = f"UPDATE mesas SET {', '.join(updates)} WHERE id = {'%s' if is_postgres else '?'}"
+        
+        cursor.execute(query, values)
+        db.commit()
+        
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Mesa não encontrada'}), 404
+        
+        return jsonify({'message': 'Mesa atualizada com sucesso'}), 200
+        
+    except Exception as e:
+        print(f"Erro ao atualizar mesa: {str(e)}")
+        return jsonify({'error': f'Erro ao atualizar mesa: {str(e)}'}), 500
+
+
+@app.route('/api/mesas/<int:mesa_id>', methods=['DELETE'])
+def delete_mesa(mesa_id):
+    """Remove uma mesa"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        query = 'DELETE FROM mesas WHERE id = %s' if is_postgres else 'DELETE FROM mesas WHERE id = ?'
+        
+        cursor.execute(query, (mesa_id,))
+        db.commit()
+        
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Mesa não encontrada'}), 404
+        
+        return jsonify({'message': 'Mesa removida com sucesso'}), 200
+        
+    except Exception as e:
+        print(f"Erro ao remover mesa: {str(e)}")
+        return jsonify({'error': f'Erro ao remover mesa: {str(e)}'}), 500
+
+
+# ========================================
+# ROTAS DE COMANDAS
+# ========================================
+
+@app.route('/api/comandas', methods=['GET'])
+def get_comandas():
+    """Lista todas as comandas (pode filtrar por status)"""
+    try:
+        status_filter = request.args.get('status', None)
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        if status_filter:
+            query = '''
+                SELECT c.id, c.mesa_id, m.numero as mesa_numero, c.status, c.total, 
+                       c.data_abertura, c.data_fechamento
+                FROM comandas c
+                JOIN mesas m ON c.mesa_id = m.id
+                WHERE c.status = %s
+                ORDER BY c.data_abertura DESC
+            ''' if is_postgres else '''
+                SELECT c.id, c.mesa_id, m.numero as mesa_numero, c.status, c.total, 
+                       c.data_abertura, c.data_fechamento
+                FROM comandas c
+                JOIN mesas m ON c.mesa_id = m.id
+                WHERE c.status = ?
+                ORDER BY c.data_abertura DESC
+            '''
+            cursor.execute(query, (status_filter,))
+        else:
+            query = '''
+                SELECT c.id, c.mesa_id, m.numero as mesa_numero, c.status, c.total, 
+                       c.data_abertura, c.data_fechamento
+                FROM comandas c
+                JOIN mesas m ON c.mesa_id = m.id
+                ORDER BY c.data_abertura DESC
+            '''
+            cursor.execute(query)
+        
+        comandas = cursor.fetchall()
+        
+        comandas_list = []
+        for comanda in comandas:
+            comanda_dict = dict(comanda) if not isinstance(comanda, dict) else comanda
+            comandas_list.append({
+                'id': comanda_dict['id'],
+                'mesa_id': comanda_dict['mesa_id'],
+                'mesa_numero': comanda_dict['mesa_numero'],
+                'status': comanda_dict['status'],
+                'total': float(comanda_dict['total']) if comanda_dict['total'] else 0,
+                'data_abertura': str(comanda_dict['data_abertura']),
+                'data_fechamento': str(comanda_dict['data_fechamento']) if comanda_dict.get('data_fechamento') else None
+            })
+        
+        return jsonify(comandas_list), 200
+    except Exception as e:
+        print(f"Erro ao buscar comandas: {str(e)}")
+        return jsonify({'error': f'Erro ao buscar comandas: {str(e)}'}), 500
+
+
+@app.route('/api/comandas/<int:comanda_id>', methods=['GET'])
+def get_comanda_detalhes(comanda_id):
+    """Retorna detalhes de uma comanda com seus itens"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # Buscar comanda
+        query_comanda = '''
+            SELECT c.id, c.mesa_id, m.numero as mesa_numero, c.status, c.total, 
+                   c.data_abertura, c.data_fechamento
+            FROM comandas c
+            JOIN mesas m ON c.mesa_id = m.id
+            WHERE c.id = %s
+        ''' if is_postgres else '''
+            SELECT c.id, c.mesa_id, m.numero as mesa_numero, c.status, c.total, 
+                   c.data_abertura, c.data_fechamento
+            FROM comandas c
+            JOIN mesas m ON c.mesa_id = m.id
+            WHERE c.id = ?
+        '''
+        
+        cursor.execute(query_comanda, (comanda_id,))
+        comanda = cursor.fetchone()
+        
+        if not comanda:
+            return jsonify({'error': 'Comanda não encontrada'}), 404
+        
+        comanda_dict = dict(comanda) if not isinstance(comanda, dict) else comanda
+        
+        # Buscar itens da comanda
+        query_itens = '''
+            SELECT ic.id, ic.produto_id, p.nome as produto_nome, ic.quantidade, 
+                   ic.preco_unitario, ic.subtotal, ic.observacoes
+            FROM itens_comanda ic
+            JOIN produtos p ON ic.produto_id = p.id
+            WHERE ic.comanda_id = %s
+            ORDER BY ic.data_adicao
+        ''' if is_postgres else '''
+            SELECT ic.id, ic.produto_id, p.nome as produto_nome, ic.quantidade, 
+                   ic.preco_unitario, ic.subtotal, ic.observacoes
+            FROM itens_comanda ic
+            JOIN produtos p ON ic.produto_id = p.id
+            WHERE ic.comanda_id = ?
+            ORDER BY ic.data_adicao
+        '''
+        
+        cursor.execute(query_itens, (comanda_id,))
+        itens = cursor.fetchall()
+        
+        itens_list = []
+        for item in itens:
+            item_dict = dict(item) if not isinstance(item, dict) else item
+            itens_list.append({
+                'id': item_dict['id'],
+                'produto_id': item_dict['produto_id'],
+                'produto_nome': item_dict['produto_nome'],
+                'quantidade': item_dict['quantidade'],
+                'preco_unitario': float(item_dict['preco_unitario']),
+                'subtotal': float(item_dict['subtotal']),
+                'observacoes': item_dict.get('observacoes', '')
+            })
+        
+        resultado = {
+            'id': comanda_dict['id'],
+            'mesa_id': comanda_dict['mesa_id'],
+            'mesa_numero': comanda_dict['mesa_numero'],
+            'status': comanda_dict['status'],
+            'total': float(comanda_dict['total']) if comanda_dict['total'] else 0,
+            'data_abertura': str(comanda_dict['data_abertura']),
+            'data_fechamento': str(comanda_dict['data_fechamento']) if comanda_dict.get('data_fechamento') else None,
+            'itens': itens_list
+        }
+        
+        return jsonify(resultado), 200
+    except Exception as e:
+        print(f"Erro ao buscar detalhes da comanda: {str(e)}")
+        return jsonify({'error': f'Erro ao buscar detalhes da comanda: {str(e)}'}), 500
+
+
+@app.route('/api/comandas', methods=['POST'])
+def abrir_comanda():
+    """Abre uma nova comanda em uma mesa"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'mesa_id' not in data:
+            return jsonify({'error': 'ID da mesa é obrigatório'}), 400
+        
+        mesa_id = int(data['mesa_id'])
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # Verificar se a mesa existe
+        query_check_mesa = 'SELECT id, status FROM mesas WHERE id = %s' if is_postgres else 'SELECT id, status FROM mesas WHERE id = ?'
+        cursor.execute(query_check_mesa, (mesa_id,))
+        mesa = cursor.fetchone()
+        
+        if not mesa:
+            return jsonify({'error': 'Mesa não encontrada'}), 404
+        
+        mesa_dict = dict(mesa) if not isinstance(mesa, dict) else {'id': mesa[0], 'status': mesa[1]}
+        
+        # Verificar se já existe comanda aberta para esta mesa
+        query_check_comanda = 'SELECT id FROM comandas WHERE mesa_id = %s AND status = %s' if is_postgres else 'SELECT id FROM comandas WHERE mesa_id = ? AND status = ?'
+        cursor.execute(query_check_comanda, (mesa_id, 'aberta'))
+        comanda_existente = cursor.fetchone()
+        
+        if comanda_existente:
+            return jsonify({'error': 'Já existe uma comanda aberta para esta mesa'}), 400
+        
+        # Criar comanda
+        if is_postgres:
+            cursor.execute(
+                'INSERT INTO comandas (mesa_id) VALUES (%s) RETURNING id, mesa_id, status, total, data_abertura',
+                (mesa_id,)
+            )
+            result = cursor.fetchone()
+            comanda = dict(result) if isinstance(result, dict) else {
+                'id': result[0], 'mesa_id': result[1], 'status': result[2],
+                'total': result[3], 'data_abertura': result[4]
+            }
+        else:
+            cursor.execute(
+                'INSERT INTO comandas (mesa_id) VALUES (?)',
+                (mesa_id,)
+            )
+            new_id = cursor.lastrowid
+            comanda = {
+                'id': new_id,
+                'mesa_id': mesa_id,
+                'status': 'aberta',
+                'total': 0,
+                'data_abertura': None  # SQLite preenche automaticamente
+            }
+        
+        # Atualizar status da mesa para 'ocupada'
+        query_update_mesa = 'UPDATE mesas SET status = %s WHERE id = %s' if is_postgres else 'UPDATE mesas SET status = ? WHERE id = ?'
+        cursor.execute(query_update_mesa, ('ocupada', mesa_id))
+        
+        db.commit()
+        
+        return jsonify({
+            'id': comanda['id'],
+            'mesa_id': comanda['mesa_id'],
+            'status': comanda['status'],
+            'total': float(comanda['total']) if comanda['total'] else 0,
+            'message': 'Comanda aberta com sucesso'
+        }), 201
+        
+    except Exception as e:
+        print(f"Erro ao abrir comanda: {str(e)}")
+        return jsonify({'error': f'Erro ao abrir comanda: {str(e)}'}), 500
+
+
+@app.route('/api/comandas/<int:comanda_id>/itens', methods=['POST'])
+def add_item_comanda(comanda_id):
+    """Adiciona um item à comanda"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'produto_id' not in data or 'quantidade' not in data:
+            return jsonify({'error': 'Produto e quantidade são obrigatórios'}), 400
+        
+        produto_id = int(data['produto_id'])
+        quantidade = int(data['quantidade'])
+        observacoes = data.get('observacoes', '')
+        
+        if quantidade <= 0:
+            return jsonify({'error': 'Quantidade deve ser maior que zero'}), 400
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # Verificar se a comanda existe e está aberta
+        query_check_comanda = 'SELECT id, status FROM comandas WHERE id = %s' if is_postgres else 'SELECT id, status FROM comandas WHERE id = ?'
+        cursor.execute(query_check_comanda, (comanda_id,))
+        comanda = cursor.fetchone()
+        
+        if not comanda:
+            return jsonify({'error': 'Comanda não encontrada'}), 404
+        
+        comanda_dict = dict(comanda) if not isinstance(comanda, dict) else {'id': comanda[0], 'status': comanda[1]}
+        
+        if comanda_dict['status'] != 'aberta':
+            return jsonify({'error': 'Comanda não está aberta'}), 400
+        
+        # Buscar preço do produto
+        query_produto = 'SELECT id, preco_venda FROM produtos WHERE id = %s' if is_postgres else 'SELECT id, preco_venda FROM produtos WHERE id = ?'
+        cursor.execute(query_produto, (produto_id,))
+        produto = cursor.fetchone()
+        
+        if not produto:
+            return jsonify({'error': 'Produto não encontrado'}), 404
+        
+        produto_dict = dict(produto) if not isinstance(produto, dict) else {'id': produto[0], 'preco_venda': produto[1]}
+        preco_unitario = float(produto_dict['preco_venda'])
+        subtotal = preco_unitario * quantidade
+        
+        # Adicionar item à comanda
+        if is_postgres:
+            cursor.execute(
+                'INSERT INTO itens_comanda (comanda_id, produto_id, quantidade, preco_unitario, subtotal, observacoes) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id',
+                (comanda_id, produto_id, quantidade, preco_unitario, subtotal, observacoes)
+            )
+            result = cursor.fetchone()
+            item_id = result['id'] if isinstance(result, dict) else result[0]
+        else:
+            cursor.execute(
+                'INSERT INTO itens_comanda (comanda_id, produto_id, quantidade, preco_unitario, subtotal, observacoes) VALUES (?, ?, ?, ?, ?, ?)',
+                (comanda_id, produto_id, quantidade, preco_unitario, subtotal, observacoes)
+            )
+            item_id = cursor.lastrowid
+        
+        # Atualizar total da comanda
+        query_update_total = 'UPDATE comandas SET total = total + %s WHERE id = %s' if is_postgres else 'UPDATE comandas SET total = total + ? WHERE id = ?'
+        cursor.execute(query_update_total, (subtotal, comanda_id))
+        
+        db.commit()
+        
+        return jsonify({
+            'id': item_id,
+            'comanda_id': comanda_id,
+            'produto_id': produto_id,
+            'quantidade': quantidade,
+            'preco_unitario': preco_unitario,
+            'subtotal': subtotal,
+            'observacoes': observacoes,
+            'message': 'Item adicionado com sucesso'
+        }), 201
+        
+    except Exception as e:
+        print(f"Erro ao adicionar item à comanda: {str(e)}")
+        return jsonify({'error': f'Erro ao adicionar item à comanda: {str(e)}'}), 500
+
+
+@app.route('/api/comandas/<int:comanda_id>/itens/<int:item_id>', methods=['DELETE'])
+def remove_item_comanda(comanda_id, item_id):
+    """Remove um item da comanda"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # Buscar o item para pegar o subtotal
+        query_item = 'SELECT subtotal FROM itens_comanda WHERE id = %s AND comanda_id = %s' if is_postgres else 'SELECT subtotal FROM itens_comanda WHERE id = ? AND comanda_id = ?'
+        cursor.execute(query_item, (item_id, comanda_id))
+        item = cursor.fetchone()
+        
+        if not item:
+            return jsonify({'error': 'Item não encontrado'}), 404
+        
+        item_dict = dict(item) if not isinstance(item, dict) else {'subtotal': item[0]}
+        subtotal = float(item_dict['subtotal'])
+        
+        # Remover item
+        query_delete = 'DELETE FROM itens_comanda WHERE id = %s' if is_postgres else 'DELETE FROM itens_comanda WHERE id = ?'
+        cursor.execute(query_delete, (item_id,))
+        
+        # Atualizar total da comanda
+        query_update_total = 'UPDATE comandas SET total = total - %s WHERE id = %s' if is_postgres else 'UPDATE comandas SET total = total - ? WHERE id = ?'
+        cursor.execute(query_update_total, (subtotal, comanda_id))
+        
+        db.commit()
+        
+        return jsonify({'message': 'Item removido com sucesso'}), 200
+        
+    except Exception as e:
+        print(f"Erro ao remover item da comanda: {str(e)}")
+        return jsonify({'error': f'Erro ao remover item da comanda: {str(e)}'}), 500
+
+
+@app.route('/api/comandas/<int:comanda_id>/fechar', methods=['POST'])
+def fechar_comanda(comanda_id):
+    """Fecha a comanda e registra as vendas"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # Buscar comanda
+        query_comanda = 'SELECT id, mesa_id, status FROM comandas WHERE id = %s' if is_postgres else 'SELECT id, mesa_id, status FROM comandas WHERE id = ?'
+        cursor.execute(query_comanda, (comanda_id,))
+        comanda = cursor.fetchone()
+        
+        if not comanda:
+            return jsonify({'error': 'Comanda não encontrada'}), 404
+        
+        comanda_dict = dict(comanda) if not isinstance(comanda, dict) else {'id': comanda[0], 'mesa_id': comanda[1], 'status': comanda[2]}
+        
+        if comanda_dict['status'] != 'aberta':
+            return jsonify({'error': 'Comanda não está aberta'}), 400
+        
+        # Buscar itens da comanda
+        query_itens = 'SELECT produto_id, quantidade FROM itens_comanda WHERE comanda_id = %s' if is_postgres else 'SELECT produto_id, quantidade FROM itens_comanda WHERE comanda_id = ?'
+        cursor.execute(query_itens, (comanda_id,))
+        itens = cursor.fetchall()
+        
+        # Registrar vendas para cada item
+        for item in itens:
+            item_dict = dict(item) if not isinstance(item, dict) else {'produto_id': item[0], 'quantidade': item[1]}
+            
+            if is_postgres:
+                cursor.execute(
+                    'INSERT INTO vendas (produto_id, quantidade_vendida) VALUES (%s, %s)',
+                    (item_dict['produto_id'], item_dict['quantidade'])
+                )
+            else:
+                cursor.execute(
+                    'INSERT INTO vendas (produto_id, quantidade_vendida) VALUES (?, ?)',
+                    (item_dict['produto_id'], item_dict['quantidade'])
+                )
+        
+        # Fechar comanda
+        query_fechar = 'UPDATE comandas SET status = %s, data_fechamento = CURRENT_TIMESTAMP WHERE id = %s' if is_postgres else 'UPDATE comandas SET status = ?, data_fechamento = CURRENT_TIMESTAMP WHERE id = ?'
+        cursor.execute(query_fechar, ('fechada', comanda_id))
+        
+        # Liberar mesa
+        query_liberar_mesa = 'UPDATE mesas SET status = %s WHERE id = %s' if is_postgres else 'UPDATE mesas SET status = ? WHERE id = ?'
+        cursor.execute(query_liberar_mesa, ('disponivel', comanda_dict['mesa_id']))
+        
+        db.commit()
+        
+        return jsonify({'message': 'Comanda fechada com sucesso'}), 200
+        
+    except Exception as e:
+        print(f"Erro ao fechar comanda: {str(e)}")
+        return jsonify({'error': f'Erro ao fechar comanda: {str(e)}'}), 500
+
+
+@app.route('/api/comandas/<int:comanda_id>/cancelar', methods=['POST'])
+def cancelar_comanda(comanda_id):
+    """Cancela a comanda sem registrar vendas"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # Buscar comanda
+        query_comanda = 'SELECT id, mesa_id, status FROM comandas WHERE id = %s' if is_postgres else 'SELECT id, mesa_id, status FROM comandas WHERE id = ?'
+        cursor.execute(query_comanda, (comanda_id,))
+        comanda = cursor.fetchone()
+        
+        if not comanda:
+            return jsonify({'error': 'Comanda não encontrada'}), 404
+        
+        comanda_dict = dict(comanda) if not isinstance(comanda, dict) else {'id': comanda[0], 'mesa_id': comanda[1], 'status': comanda[2]}
+        
+        if comanda_dict['status'] != 'aberta':
+            return jsonify({'error': 'Comanda não está aberta'}), 400
+        
+        # Cancelar comanda
+        query_cancelar = 'UPDATE comandas SET status = %s, data_fechamento = CURRENT_TIMESTAMP WHERE id = %s' if is_postgres else 'UPDATE comandas SET status = ?, data_fechamento = CURRENT_TIMESTAMP WHERE id = ?'
+        cursor.execute(query_cancelar, ('cancelada', comanda_id))
+        
+        # Liberar mesa
+        query_liberar_mesa = 'UPDATE mesas SET status = %s WHERE id = %s' if is_postgres else 'UPDATE mesas SET status = ? WHERE id = ?'
+        cursor.execute(query_liberar_mesa, ('disponivel', comanda_dict['mesa_id']))
+        
+        db.commit()
+        
+        return jsonify({'message': 'Comanda cancelada com sucesso'}), 200
+        
+    except Exception as e:
+        print(f"Erro ao cancelar comanda: {str(e)}")
+        return jsonify({'error': f'Erro ao cancelar comanda: {str(e)}'}), 500
+
 # ========================================
 # ROTAS DE ESTATÍSTICAS E DASHBOARD
 # ========================================
