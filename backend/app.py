@@ -283,71 +283,57 @@ def cadastrar_usuario():
 # ROTAS DE INSUMOS
 # ========================================
 
-@app.route('/insumos', methods=['GET'])
-def get_insumos():
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute('SELECT id, nome, unidade_medida, estoque_atual FROM insumos')
-    insumos = cursor.fetchall()
-    return jsonify([dict(row) for row in insumos])
-
 @app.route('/insumos', methods=['POST'])
 def add_insumo():
-    data = request.get_json()
-    nome = data['nome']
-    unidade_medida = data['unidade_medida']
-    estoque_atual = data.get('estoque_atual', 0)
-    
-    db = get_db()
-    cursor = db.cursor()
-    
-    is_postgres = os.environ.get('DATABASE_URL') is not None
-    if is_postgres:
-        cursor.execute(
-            'INSERT INTO insumos (nome, unidade_medida, estoque_atual) VALUES (%s, %s, %s) RETURNING id',
-            (nome, unidade_medida, estoque_atual)
-        )
-        new_id = cursor.fetchone()[0]
-    else:
-        cursor.execute(
-            'INSERT INTO insumos (nome, unidade_medida, estoque_atual) VALUES (?, ?, ?)',
-            (nome, unidade_medida, estoque_atual)
-        )
-        new_id = cursor.lastrowid
-    
-    db.commit()
-    return jsonify({'id': new_id, 'nome': nome}), 201
-
-@app.route('/insumos/<int:insumo_id>', methods=['PUT'])
-def update_insumo(insumo_id):
-    data = request.get_json()
-    db = get_db()
-    cursor = db.cursor()
-    
-    is_postgres = os.environ.get('DATABASE_URL') is not None
-    query = 'UPDATE insumos SET nome = %s, unidade_medida = %s, estoque_atual = %s WHERE id = %s' if is_postgres else 'UPDATE insumos SET nome = ?, unidade_medida = ?, estoque_atual = ? WHERE id = ?'
-    
-    cursor.execute(query, (data['nome'], data['unidade_medida'], data['estoque_atual'], insumo_id))
-    db.commit()
-    return jsonify({'message': 'Insumo atualizado com sucesso'})
-
-@app.route('/insumos/<int:insumo_id>', methods=['DELETE'])
-def delete_insumo(insumo_id):
-    db = get_db()
-    cursor = db.cursor()
-    
-    is_postgres = os.environ.get('DATABASE_URL') is not None
-    query_check = 'SELECT 1 FROM ficha_tecnica WHERE insumo_id = %s' if is_postgres else 'SELECT 1 FROM ficha_tecnica WHERE insumo_id = ?'
-    query_delete = 'DELETE FROM insumos WHERE id = %s' if is_postgres else 'DELETE FROM insumos WHERE id = ?'
-    
-    cursor.execute(query_check, (insumo_id,))
-    ficha = cursor.fetchone()
-    if ficha:
-        return jsonify({'error': 'Não é possível excluir. Este insumo está sendo usado em uma ficha técnica.'}), 400
+    """Adiciona um novo insumo"""
+    try:
+        data = request.get_json()
         
-    cursor.execute(query_delete, (insumo_id,))
-    db.commit()
-    return jsonify({'message': 'Insumo excluído com sucesso'})
+        if not data or 'nome' not in data or 'unidade_medida' not in data:
+            return jsonify({'error': 'Nome e unidade de medida são obrigatórios'}), 400
+        
+        nome = data['nome'].strip()
+        unidade_medida = data['unidade_medida'].strip()
+        estoque_atual = float(data.get('estoque_atual', 0))
+        
+        if not nome or not unidade_medida:
+            return jsonify({'error': 'Nome e unidade de medida não podem estar vazios'}), 400
+        
+        if estoque_atual < 0:
+            return jsonify({'error': 'Estoque não pode ser negativo'}), 400
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        if is_postgres:
+            cursor.execute(
+                'INSERT INTO insumos (nome, unidade_medida, estoque_atual) VALUES (%s, %s, %s) RETURNING id, nome, unidade_medida, estoque_atual',
+                (nome, unidade_medida, estoque_atual)
+            )
+            insumo = dict(cursor.fetchone())
+        else:
+            cursor.execute(
+                'INSERT INTO insumos (nome, unidade_medida, estoque_atual) VALUES (?, ?, ?)',
+                (nome, unidade_medida, estoque_atual)
+            )
+            new_id = cursor.lastrowid
+            insumo = {
+                'id': new_id,
+                'nome': nome,
+                'unidade_medida': unidade_medida,
+                'estoque_atual': float(estoque_atual)
+            }
+        
+        db.commit()
+        return jsonify(insumo), 201
+        
+    except ValueError as e:
+        return jsonify({'error': f'Valor inválido: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Erro ao adicionar insumo: {str(e)}'}), 500
+
 
 # ========================================
 # ROTAS DE PRODUTOS
