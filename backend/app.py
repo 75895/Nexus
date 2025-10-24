@@ -913,7 +913,7 @@ def abrir_comanda():
         if not mesa:
             return jsonify({'error': 'Mesa não encontrada'}), 404
         
-        mesa_dict = dict(mesa) if not isinstance(mesa, dict) else {'id': mesa[0], 'status': mesa[1]}
+        mesa_dict = {'id': mesa['id'], 'status': mesa['status']} if isinstance(mesa, dict) else {'id': mesa[0], 'status': mesa[1]}
         
         # Verificar se já existe comanda aberta para esta mesa
         query_check_comanda = 'SELECT id FROM comandas WHERE mesa_id = %s AND status = %s' if is_postgres else 'SELECT id FROM comandas WHERE mesa_id = ? AND status = ?'
@@ -1009,7 +1009,7 @@ def add_item_comanda(comanda_id):
         if not comanda:
             return jsonify({'error': 'Comanda não encontrada'}), 404
         
-        comanda_dict = dict(comanda) if not isinstance(comanda, dict) else {'id': comanda[0], 'status': comanda[1]}
+        comanda_dict = {'id': comanda['id'], 'status': comanda['status']} if isinstance(comanda, dict) else {'id': comanda[0], 'status': comanda[1]}
         
         if comanda_dict['status'] != 'aberta':
             return jsonify({'error': 'Comanda não está aberta'}), 400
@@ -1022,7 +1022,7 @@ def add_item_comanda(comanda_id):
         if not produto:
             return jsonify({'error': 'Produto não encontrado'}), 404
         
-        produto_dict = dict(produto) if not isinstance(produto, dict) else {'id': produto[0], 'preco_venda': produto[1]}
+        produto_dict = {'id': produto['id'], 'preco_venda': produto['preco_venda']} if isinstance(produto, dict) else {'id': produto[0], 'preco_venda': produto[1]}
         preco_unitario = float(produto_dict['preco_venda'])
         subtotal = preco_unitario * quantidade
         
@@ -1080,7 +1080,7 @@ def remove_item_comanda(comanda_id, item_id):
         if not item:
             return jsonify({'error': 'Item não encontrado'}), 404
         
-        item_dict = dict(item) if not isinstance(item, dict) else {'subtotal': item[0]}
+        item_dict = {'subtotal': item['subtotal']} if isinstance(item, dict) else {'subtotal': item[0]}
         subtotal = float(item_dict['subtotal'])
         
         # Remover item
@@ -1117,7 +1117,7 @@ def fechar_comanda(comanda_id):
         if not comanda:
             return jsonify({'error': 'Comanda não encontrada'}), 404
         
-        comanda_dict = dict(comanda) if not isinstance(comanda, dict) else {'id': comanda[0], 'mesa_id': comanda[1], 'status': comanda[2]}
+        comanda_dict = {'id': comanda['id'], 'mesa_id': comanda['mesa_id'], 'status': comanda['status']} if isinstance(comanda, dict) else {'id': comanda[0], 'mesa_id': comanda[1], 'status': comanda[2]}
         
         if comanda_dict['status'] != 'aberta':
             return jsonify({'error': 'Comanda não está aberta'}), 400
@@ -1129,7 +1129,7 @@ def fechar_comanda(comanda_id):
         
         # Registrar vendas para cada item
         for item in itens:
-            item_dict = dict(item) if not isinstance(item, dict) else {'produto_id': item[0], 'quantidade': item[1]}
+            item_dict = {'produto_id': item['produto_id'], 'quantidade': item['quantidade']} if isinstance(item, dict) else {'produto_id': item[0], 'quantidade': item[1]}
             
             if is_postgres:
                 cursor.execute(
@@ -1176,7 +1176,7 @@ def cancelar_comanda(comanda_id):
         if not comanda:
             return jsonify({'error': 'Comanda não encontrada'}), 404
         
-        comanda_dict = dict(comanda) if not isinstance(comanda, dict) else {'id': comanda[0], 'mesa_id': comanda[1], 'status': comanda[2]}
+        comanda_dict = {'id': comanda['id'], 'mesa_id': comanda['mesa_id'], 'status': comanda['status']} if isinstance(comanda, dict) else {'id': comanda[0], 'mesa_id': comanda[1], 'status': comanda[2]}
         
         if comanda_dict['status'] != 'aberta':
             return jsonify({'error': 'Comanda não está aberta'}), 400
