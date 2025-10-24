@@ -930,10 +930,23 @@ def abrir_comanda():
                 (mesa_id,)
             )
             result = cursor.fetchone()
-            comanda = dict(result) if isinstance(result, dict) else {
-                'id': result[0], 'mesa_id': result[1], 'status': result[2],
-                'total': result[3], 'data_abertura': result[4]
-            }
+            # Corrigido: PostgreSQL com RealDictCursor retorna dicionário
+            if isinstance(result, dict):
+                comanda = {
+                    'id': result['id'],
+                    'mesa_id': result['mesa_id'],
+                    'status': result['status'],
+                    'total': float(result['total']) if result['total'] else 0,
+                    'data_abertura': str(result['data_abertura'])
+                }
+            else:
+                comanda = {
+                    'id': result[0],
+                    'mesa_id': result[1],
+                    'status': result[2],
+                    'total': float(result[3]) if result[3] else 0,
+                    'data_abertura': str(result[4])
+                }
         else:
             cursor.execute(
                 'INSERT INTO comandas (mesa_id) VALUES (?)',
