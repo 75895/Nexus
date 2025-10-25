@@ -1,4 +1,4 @@
-const CACHE_NAME = "nexus-v1";
+const CACHE_NAME = "nexus-v2";
 const API_CACHE = "nexus-api-v1";
 
 // Arquivos para cachear na instalação

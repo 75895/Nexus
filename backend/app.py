@@ -1380,6 +1380,127 @@ def get_vendas_por_dia():
         
     except Exception as e:
         return jsonify({'error': f'Erro ao buscar vendas por dia: {str(e)}'}), 500
+# ==================== INSUMOS ====================
+
+@app.route('/insumos', methods=['GET'])
+def listar_insumos():
+    """Listar todos os insumos"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, nome, unidade_medida, quantidade_estoque, 
+                   estoque_minimo, preco_unitario, fornecedor
+            FROM insumos
+            ORDER BY nome
+        ''')
+        
+        insumos = []
+        for row in cursor.fetchall():
+            insumos.append({
+                'id': row[0],
+                'nome': row[1],
+                'unidade_medida': row[2],
+                'quantidade_estoque': row[3],
+                'estoque_minimo': row[4],
+                'preco_unitario': row[5],
+                'fornecedor': row[6]
+            })
+        
+        conn.close()
+        return jsonify(insumos), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/insumos', methods=['POST'])
+def cadastrar_insumo():
+    """Cadastrar novo insumo"""
+    try:
+        data = request.json
+        nome = data.get('nome')
+        unidade_medida = data.get('unidade_medida')
+        quantidade_estoque = data.get('quantidade_estoque', 0)
+        estoque_minimo = data.get('estoque_minimo', 0)
+        preco_unitario = data.get('preco_unitario', 0)
+        fornecedor = data.get('fornecedor', '')
+        
+        if not nome or not unidade_medida:
+            return jsonify({'error': 'Nome e unidade de medida são obrigatórios'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO insumos (nome, unidade_medida, quantidade_estoque, 
+                               estoque_minimo, preco_unitario, fornecedor)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (nome, unidade_medida, quantidade_estoque, estoque_minimo, 
+              preco_unitario, fornecedor))
+        
+        conn.commit()
+        insumo_id = cursor.lastrowid
+        conn.close()
+        
+        return jsonify({
+            'id': insumo_id,
+            'nome': nome,
+            'unidade_medida': unidade_medida,
+            'quantidade_estoque': quantidade_estoque,
+            'estoque_minimo': estoque_minimo,
+            'preco_unitario': preco_unitario,
+            'fornecedor': fornecedor
+        }), 201
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/insumos/<int:insumo_id>', methods=['PUT'])
+def atualizar_insumo(insumo_id):
+    """Atualizar insumo existente"""
+    try:
+        data = request.json
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE insumos 
+            SET nome = ?, unidade_medida = ?, quantidade_estoque = ?,
+                estoque_minimo = ?, preco_unitario = ?, fornecedor = ?
+            WHERE id = ?
+        ''', (data.get('nome'), data.get('unidade_medida'), 
+              data.get('quantidade_estoque'), data.get('estoque_minimo'),
+              data.get('preco_unitario'), data.get('fornecedor'), insumo_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Insumo atualizado com sucesso'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/insumos/<int:insumo_id>', methods=['DELETE'])
+def deletar_insumo(insumo_id):
+    """Deletar insumo"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM insumos WHERE id = ?', (insumo_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Insumo deletado com sucesso'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     import os
