@@ -207,7 +207,8 @@
                         if (mesa.status === 'disponivel') {
                             abrirComanda(mesa.id, mesa.numero);
                         } else if (mesa.comanda_ativa) {
-                            window.location.href = `comanda.html?id=${mesa.comanda_ativa.id}`;
+                            window.location.href = `/Nexus/comanda.html?id=${mesa.comanda_ativa.id}`;
+
                         }
                     });
                     
