@@ -117,7 +117,7 @@
             };
 
             try {
-                const response = await fetch(`${API_URL}/insumos`, {
+                const response = await fetch(`${API_URL}/api/insumos`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -126,22 +126,22 @@
                 });
 
                 if (response.ok) {
-                    alert('Insumo cadastrado com sucesso!');
+                    alert('✅ Insumo cadastrado com sucesso!');
                     document.getElementById('insumoForm').reset();
                     carregarInsumos();
                 } else {
-                    alert('Erro ao cadastrar insumo.');
+                    alert('❌ Erro ao cadastrar insumo.');
                 }
             } catch (error) {
                 console.error('Erro:', error);
-                alert('Erro ao conectar com o servidor.');
+                alert('⚠️ Erro ao conectar com o servidor.');
             }
         });
 
         // Carregar lista de insumos
         async function carregarInsumos() {
             try {
-                const response = await fetch(`${API_URL}/insumos`);
+                const response = await fetch(`${API_URL}/api/insumos`);
                 const insumos = await response.json();
 
                 const tbody = document.getElementById('insumosTableBody');
@@ -173,7 +173,7 @@
 
         // Editar insumo (simplificado)
         async function editarInsumo(id) {
-            const insumos = await (await fetch(`${API_URL}/insumos`)).json();
+            const insumos = await (await fetch(`${API_URL}/api/insumos`)).json();
             const insumoToEdit = insumos.find(i => i.id === id);
 
             if (!insumoToEdit) {
@@ -197,7 +197,7 @@
             };
 
             try {
-                const response = await fetch(`${API_URL}/insumos/${id}`, {
+                const response = await fetch(`${API_URL}/api/insumos/${id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -206,25 +206,23 @@
                 });
 
                 if (response.ok) {
-                    alert('Insumo atualizado com sucesso!');
+                    alert('✅ Insumo atualizado com sucesso!');
                     carregarInsumos();
                 } else {
-                    alert('Erro ao atualizar insumo.');
+                    alert('❌ Erro ao atualizar insumo.');
                 }
             } catch (error) {
                 console.error('Erro:', error);
-                alert('Erro ao conectar com o servidor.');
+                alert('⚠️ Erro ao conectar com o servidor.');
             }
         }
 
         // Excluir insumo
         async function excluirInsumo(id) {
-            if (!confirm('Tem certeza que deseja excluir este insumo?')) {
-                return;
-            }
+            if (!confirm('Tem certeza que deseja excluir este insumo?')) return;
 
             try {
-                const response = await fetch(`${API_URL}/insumos/${id}`, {
+                const response = await fetch(`${API_URL}/api/insumos/${id}`, {
                     method: 'DELETE'
                 });
 
@@ -238,7 +236,7 @@
                 }
             } catch (error) {
                 console.error('Erro:', error);
-                alert('Erro ao conectar com o servidor.');
+                alert('⚠️ Erro ao conectar com o servidor.');
             }
         }
     </script>
