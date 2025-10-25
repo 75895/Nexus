@@ -8,7 +8,10 @@ CREATE TABLE insumos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,
     unidade_medida TEXT NOT NULL,
-    estoque_atual REAL NOT NULL DEFAULT 0
+    quantidade_estoque REAL NOT NULL DEFAULT 0,
+    estoque_minimo REAL NOT NULL DEFAULT 0,
+    preco_unitario REAL NOT NULL DEFAULT 0,
+    fornecedor TEXT
 );
 
 CREATE TABLE produtos (
@@ -34,7 +37,6 @@ CREATE TABLE vendas (
     FOREIGN KEY (produto_id) REFERENCES produtos (id) ON DELETE CASCADE
 );
 
--- Nova tabela para armazenar usuários com senhas seguras
 CREATE TABLE usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
