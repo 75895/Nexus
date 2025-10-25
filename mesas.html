@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Mesas - Sistema de Gestão de Restaurante</title>
-    <link rel="icon" type="image/png" href="/imagens/favicon.png">
+    <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- PWA Manifest -->
@@ -208,7 +208,6 @@
                             abrirComanda(mesa.id, mesa.numero);
                         } else if (mesa.comanda_ativa) {
                             window.location.href = `/Nexus/comanda.html?id=${mesa.comanda_ativa.id}`;
-
                         }
                     });
                     
@@ -237,7 +236,7 @@
                 if (response.ok) {
                     const comanda = await response.json();
                     alert('Comanda aberta com sucesso!');
-                    window.location.href = `comanda.html?id=${comanda.id}`;
+                    window.location.href = `/Nexus/comanda.html?id=${comanda.id}`;
                 } else {
                     const error = await response.json();
                     alert(`Erro: ${error.error}`);
@@ -280,7 +279,7 @@
                         <td class="px-4 py-2">${dataFormatada}</td>
                         <td class="px-4 py-2 text-center">
                             <button 
-                                onclick="window.location.href='comanda.html?id=${comanda.id}'" 
+                                onclick="window.location.href='/Nexus/comanda.html?id=${comanda.id}'" 
                                 class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
                             >
                                 Ver Detalhes
