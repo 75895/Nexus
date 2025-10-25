@@ -1501,15 +1501,16 @@ def deletar_insumo(insumo_id):
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+# Forçar recriação do banco de dados
+import os
+if os.path.exists(DATABASE):
+    os.remove(DATABASE)
+    print("🗑️ Banco de dados antigo removido")
+
+# Inicializar banco
+with app.app_context():
+    init_db()
+    print("✅ Banco de dados criado!")
 
 if __name__ == '__main__':
-    import os
-    # Só inicializa o banco se ele não existir
-    if not os.path.exists(DATABASE):
-        with app.app_context():
-            init_db()
-            print("⚠️  Banco de dados criado pela primeira vez!")
-    else:
-        print("✅ Banco de dados já existe. Usando o banco existente.")
-    
     app.run(debug=True, host='0.0.0.0', port=5000)
