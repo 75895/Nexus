@@ -11,9 +11,16 @@
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Manifesto PWA -->
-    <link rel="manifest" href="/manifest.json">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/Nexus/manifest.json">
     <meta name="theme-color" content="#1e293b">
+    <link rel="apple-touch-icon" href="/Nexus/imagens/icon-192x192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Nexus">
+    <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Nexus">
 </head>
 
 <body class="flex items-center justify-center min-h-screen" style="background: url('imagens/chef_tablet_restaurant.png') no-repeat center center fixed; background-size: cover;">
@@ -100,7 +107,7 @@
     <!-- Registro do Service Worker -->
     <script>
     if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/service-worker.js")
+        navigator.serviceWorker.register("/Nexus/service-worker.js")
             .then(() => console.log("✅ Service Worker registrado com sucesso"))
             .catch(err => console.error("❌ Erro ao registrar Service Worker:", err));
     }
@@ -108,4 +115,3 @@
 
 </body>
 </html>
-    

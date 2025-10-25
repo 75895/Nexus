@@ -3,14 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendas - Sistema de Gestão de Restaurante</title>
+    <title>Produtos - Sistema de Gestão de Restaurante</title>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/Nexus/manifest.json">
+    <meta name="theme-color" content="#1e293b">
+    <link rel="apple-touch-icon" href="/Nexus/imagens/icon-192x192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Nexus">
+    <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Nexus">
 </head>
 <body class="bg-gray-100">
     <!-- Navbar -->
     <nav class="bg-white shadow-md">
         <div class="container mx-auto px-6 py-4 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-gray-800">Registro de Vendas</h1>
+            <h1 class="text-2xl font-bold text-gray-800">Gestão de Produtos</h1>
             <a href="dashboard.html" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
                 Voltar ao Dashboard
             </a>
@@ -19,49 +30,60 @@
 
     <!-- Container Principal -->
     <div class="container mx-auto px-6 py-8">
-        <!-- Formulário de Registro de Venda -->
+        <!-- Formulário de Cadastro -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Registrar Nova Venda</h2>
-            <form id="vendaForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Cadastrar Novo Produto</h2>
+            <form id="produtoForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-gray-600 mb-2">Selecione o Produto</label>
-                    <select 
-                        id="produto_id" 
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    <label class="block text-gray-600 mb-2">Nome do Produto</label>
+                    <input 
+                        type="text" 
+                        id="nome" 
+                        placeholder="Ex: Hambúrguer Clássico" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                         required
-                    >
-                        <option value="">Carregando...</option>
-                    </select>
+                    />
                 </div>
                 <div>
-                    <label class="block text-gray-600 mb-2">Quantidade Vendida</label>
+                    <label class="block text-gray-600 mb-2">Preço de Venda (R$)</label>
                     <input 
                         type="number" 
-                        id="quantidade_vendida" 
-                        placeholder="Ex: 2" 
-                        min="1"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        id="preco_venda" 
+                        placeholder="Ex: 25.90" 
+                        step="0.01"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                         required
                     />
                 </div>
                 <div class="md:col-span-2">
                     <button 
                         type="submit" 
-                        class="bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600 transition"
+                        class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition"
                     >
-                        Registrar Venda
+                        Cadastrar Produto
                     </button>
                 </div>
             </form>
         </div>
 
-        <!-- Informações sobre Baixa Automática -->
-        <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg">
-            <h3 class="text-lg font-semibold text-blue-800 mb-2">ℹ️ Baixa Automática de Estoque</h3>
-            <p class="text-blue-700">
-                Ao registrar uma venda, o sistema automaticamente dará baixa nos insumos necessários de acordo com a ficha técnica do produto. 
-                Certifique-se de que o produto possui uma ficha técnica cadastrada antes de registrar a venda.
-            </p>
+        <!-- Tabela de Produtos -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Lista de Produtos</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full table-auto">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-700">
+                            <th class="px-4 py-2 text-left">ID</th>
+                            <th class="px-4 py-2 text-left">Nome</th>
+                            <th class="px-4 py-2 text-left">Preço de Venda</th>
+                            <th class="px-4 py-2 text-left">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="produtosTableBody">
+                        <!-- Dados serão carregados dinamicamente -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -73,19 +95,17 @@
             carregarProdutos();
         });
 
-        // Registrar nova venda
-        document.getElementById('vendaForm').addEventListener('submit', async function(e) {
+        // Cadastrar novo produto
+        document.getElementById('produtoForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const data = {
-                itens: [{
-                    produto_id: parseInt(document.getElementById('produto_id').value),
-                    quantidade: parseInt(document.getElementById('quantidade_vendida').value)
-                }]
+                nome: document.getElementById('nome').value,
+                preco_venda: parseFloat(document.getElementById('preco_venda').value)
             };
 
             try {
-                const response = await fetch(`${API_URL}/vendas`, { // Rota corrigida para /vendas
+                const response = await fetch(`${API_URL}/produtos`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -93,43 +113,164 @@
                     body: JSON.stringify(data)
                 });
 
-                const result = await response.json();
-
                 if (response.ok) {
-                    alert('✅ ' + result.message);
-                    document.getElementById('vendaForm').reset();
-                    // Recarregar produtos para atualizar informações
+                    alert('Produto cadastrado com sucesso!');
+                    document.getElementById('produtoForm').reset();
                     carregarProdutos();
                 } else {
-                    alert('❌ Erro: ' + result.error);
+                    alert('Erro ao cadastrar produto.');
                 }
             } catch (error) {
                 console.error('Erro:', error);
-                alert('❌ Erro ao conectar com o servidor. Verifique se o backend está rodando.');
+                alert('Erro ao conectar com o servidor.');
             }
         });
 
-        // Carregar produtos para o formulário
+        // Carregar lista de produtos
         async function carregarProdutos() {
             try {
                 const response = await fetch(`${API_URL}/produtos`);
                 const produtos = await response.json();
 
-                const select = document.getElementById('produto_id');
-                select.innerHTML = '<option value="">Selecione um produto...</option>';
+                const tbody = document.getElementById('produtosTableBody');
+                tbody.innerHTML = '';
 
                 produtos.forEach(produto => {
-                    const option = document.createElement('option');
-                    option.value = produto.id;
-                    option.textContent = `${produto.nome} - R$ ${produto.preco_venda.toFixed(2)}`;
-                    select.appendChild(option);
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b hover:bg-gray-50';
+                    tr.innerHTML = `
+                        <td class="px-4 py-2">${produto.id}</td>
+                        <td class="px-4 py-2">${produto.nome}</td>
+                        <td class="px-4 py-2">R$ ${produto.preco_venda.toFixed(2)}</td>
+                        <td class="px-4 py-2 flex space-x-2">
+                            <a href="fichas_tecnicas.html?produto_id=${produto.id}" class="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 transition">
+                                Ficha Técnica
+                            </a>
+                            <button onclick="editarProduto(${produto.id})" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition">
+                                Editar
+                            </button>
+                            <button onclick="excluirProduto(${produto.id})" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition">
+                                Excluir
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
                 });
             } catch (error) {
                 console.error('Erro ao carregar produtos:', error);
-                alert('❌ Erro ao carregar produtos. Verifique se o backend está rodando.');
+            }
+        }
+
+        // Editar produto (simplificado)
+        async function editarProduto(id) {
+            const produtos = await (await fetch(`${API_URL}/produtos`)).json();
+            const produtoToEdit = produtos.find(p => p.id === id);
+
+            if (!produtoToEdit) {
+                alert('Produto não encontrado.');
+                return;
+            }
+
+            const novoNome = prompt('Editar Nome:', produtoToEdit.nome);
+            if (novoNome === null) return;
+
+            const novoPreco = prompt('Editar Preço de Venda:', produtoToEdit.preco_venda);
+            if (novoPreco === null) return;
+
+            const data = {
+                nome: novoNome,
+                preco_venda: parseFloat(novoPreco)
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/produtos/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Produto atualizado com sucesso!');
+                    carregarProdutos();
+                } else {
+                    alert('Erro ao atualizar produto.');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao conectar com o servidor.');
+            }
+        }
+
+        // Excluir produto
+        async function excluirProduto(id) {
+            if (!confirm('Tem certeza que deseja excluir este produto?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/produtos/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                    carregarProdutos();
+                } else {
+                    alert('Erro ao excluir produto: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao conectar com o servidor.');
             }
         }
     </script>
+
+    <!-- Botão de Instalação PWA -->
+    <button 
+      id="install-button" 
+      style="display: none; position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; background: #1e293b; color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: 600;"
+    >
+      📱 Instalar App
+    </button>
+
+    <!-- Registrar Service Worker para PWA -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/Nexus/service-worker.js')
+            .then(registration => {
+              console.log('✅ Service Worker registrado com sucesso:', registration.scope);
+            })
+            .catch(error => {
+              console.error('❌ Erro ao registrar Service Worker:', error);
+            });
+        });
+      }
+
+      // Botão de instalação PWA
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        deferredPrompt = event;
+        const installButton = document.getElementById('install-button');
+        if (installButton) {
+          installButton.style.display = 'block';
+          installButton.addEventListener('click', () => {
+            installButton.style.display = 'none';
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+              if (choiceResult.outcome === 'accepted') {
+                console.log('✅ App instalado');
+              }
+              deferredPrompt = null;
+            });
+          });
+        }
+      });
+    </script>
 </body>
 </html>
-

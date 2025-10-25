@@ -1,21 +1,42 @@
 {
-  "name": "Sistema de Gestão de Restaurante",
-  "short_name": "Restaurante",
-  "start_url": "/index.html",
+  "name": "Nexus - Sistema de Gestão de Restaurante",
+  "short_name": "Nexus",
+  "start_url": "/Nexus/",
+  "scope": "/Nexus/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1e293b",
-  "description": "Sistema completo de gestão de restaurante com controle de mesas, comandas e estoque.",
+  "description": "Sistema completo de gestão de restaurante com controle de mesas, comandas, produtos, insumos e estoque.",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icons/icon-192x192.jpg",
+      "src": "/Nexus/imagens/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512x512.jpg",
+      "src": "/Nexus/imagens/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/Nexus/imagens/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/Nexus/imagens/screenshot-mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "categories": ["business", "productivity", "food"],
+  "lang": "pt-BR",
+  "dir": "ltr"
 }
