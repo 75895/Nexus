@@ -41,104 +41,57 @@ def close_connection(exception):
         db.close()
 
 def init_db():
-    """Inicializa o banco de dados com as tabelas necessárias"""
+    """Inicializa o banco de dados com o schema"""
     with app.app_context():
         db = get_db_connection()
-        cursor = db.cursor()
-        
-        # Verifica se está usando PostgreSQL ou SQLite
-        database_url = os.environ.get('DATABASE_URL')
-        is_postgres = database_url is not None
-        
-        # Ajusta o tipo de dados conforme o banco
-        if is_postgres:
-            # PostgreSQL
-            schema = """
-            DROP TABLE IF EXISTS itens_comanda CASCADE;
-            DROP TABLE IF EXISTS comandas CASCADE;
-            DROP TABLE IF EXISTS mesas CASCADE;
-            DROP TABLE IF EXISTS vendas CASCADE;
-            DROP TABLE IF EXISTS ficha_tecnica CASCADE;
-            DROP TABLE IF EXISTS produtos CASCADE;
-            DROP TABLE IF EXISTS insumos CASCADE;
-            DROP TABLE IF EXISTS usuarios CASCADE;
-
-            CREATE TABLE IF NOT EXISTS insumos (
-                id SERIAL PRIMARY KEY,
-                nome TEXT NOT NULL,
-                unidade_medida TEXT NOT NULL,
-                estoque_atual REAL NOT NULL DEFAULT 0
-            );
-
-            CREATE TABLE IF NOT EXISTS produtos (
-                id SERIAL PRIMARY KEY,
-                nome TEXT NOT NULL,
-                preco_venda REAL NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS ficha_tecnica (
-                id SERIAL PRIMARY KEY,
-                produto_id INTEGER NOT NULL,
-                insumo_id INTEGER NOT NULL,
-                quantidade_necessaria REAL NOT NULL,
-                FOREIGN KEY (produto_id) REFERENCES produtos (id) ON DELETE CASCADE,
-                FOREIGN KEY (insumo_id) REFERENCES insumos (id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS vendas (
-                id SERIAL PRIMARY KEY,
-                produto_id INTEGER NOT NULL,
-                quantidade_vendida INTEGER NOT NULL,
-                data_venda TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (produto_id) REFERENCES produtos (id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS usuarios (
-                id SERIAL PRIMARY KEY,
-                username TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL,
-                data_criacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS mesas (
-                id SERIAL PRIMARY KEY,
-                numero INTEGER NOT NULL UNIQUE,
-                capacidade INTEGER NOT NULL,
-                localizacao TEXT,
-                status TEXT NOT NULL DEFAULT 'disponivel',
-                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS comandas (
-                id SERIAL PRIMARY KEY,
-                mesa_id INTEGER NOT NULL,
-                status TEXT NOT NULL DEFAULT 'aberta',
-                total DECIMAL(10,2) DEFAULT 0,
-                data_abertura TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                data_fechamento TIMESTAMP,
-                FOREIGN KEY (mesa_id) REFERENCES mesas(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS itens_comanda (
-                id SERIAL PRIMARY KEY,
-                comanda_id INTEGER NOT NULL,
-                produto_id INTEGER NOT NULL,
-                quantidade INTEGER NOT NULL,
-                preco_unitario DECIMAL(10,2) NOT NULL,
-                subtotal DECIMAL(10,2) NOT NULL,
-                observacoes TEXT,
-                data_adicao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (comanda_id) REFERENCES comandas(id) ON DELETE CASCADE,
-                FOREIGN KEY (produto_id) REFERENCES produtos(id)
-            );
-            """
-        else:
-            # SQLite
-            with app.open_resource('schema.sql', mode='r') as f:
-                schema = f.read()
-        
-        cursor.executescript(schema) if not is_postgres else [cursor.execute(stmt) for stmt in schema.split(';') if stmt.strip()]
+        with app.open_resource('schema.sql', mode='r') as f:
+            db.cursor().executescript(f.read())
         db.commit()
+
+def migrar_tabela_insumos():
+    """Adiciona colunas faltantes na tabela insumos"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Tenta adicionar as colunas (se já existirem, vai dar erro mas não tem problema)
+        try:
+            cursor.execute("ALTER TABLE insumos ADD COLUMN quantidade_estoque REAL DEFAULT 0")
+            print("✅ Coluna quantidade_estoque adicionada")
+        except:
+            print("⚠️ Coluna quantidade_estoque já existe")
+        
+        try:
+            cursor.execute("ALTER TABLE insumos ADD COLUMN estoque_minimo REAL DEFAULT 0")
+            print("✅ Coluna estoque_minimo adicionada")
+        except:
+            print("⚠️ Coluna estoque_minimo já existe")
+        
+        try:
+            cursor.execute("ALTER TABLE insumos ADD COLUMN preco_unitario REAL DEFAULT 0")
+            print("✅ Coluna preco_unitario adicionada")
+        except:
+            print("⚠️ Coluna preco_unitario já existe")
+        
+        try:
+            cursor.execute("ALTER TABLE insumos ADD COLUMN fornecedor TEXT")
+            print("✅ Coluna fornecedor adicionada")
+        except:
+            print("⚠️ Coluna fornecedor já existe")
+        
+        conn.commit()
+        conn.close()
+        print("✅ Migração concluída!")
+    except Exception as e:
+        print(f"❌ Erro na migração: {e}")
+
+@app.teardown_appcontext
+def close_connection(exception):
+    """Fecha a conexão com o banco ao final de cada requisição"""
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
+
         print("✅ Banco de dados inicializado com sucesso!")
 
 @app.route('/init_db')
@@ -1510,5 +1463,9 @@ if __name__ == '__main__':
             print("⚠️  Banco de dados criado pela primeira vez!")
     else:
         print("✅ Banco de dados já existe. Usando o banco existente.")
+    
+    # Migrar tabela de insumos
+    with app.app_context():
+        migrar_tabela_insumos()
     
     app.run(debug=True, host='0.0.0.0', port=5000)
