@@ -79,6 +79,17 @@
         <!-- Tabela de Insumos -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Lista de Insumos</h2>
+
+            <!-- Campo de busca -->
+            <div class="mb-4 flex justify-between items-center">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="🔍 Buscar insumo pelo nome..." 
+                    class="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="w-full table-auto">
                     <thead>
@@ -96,6 +107,35 @@
                 </table>
             </div>
         </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div id="editModal" class="hidden fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">Editar Insumo</h2>
+
+        <input type="hidden" id="editId" />
+
+        <div class="mb-3">
+          <label class="block text-gray-600 mb-1">Nome</label>
+          <input id="editNome" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500" />
+        </div>
+
+        <div class="mb-3">
+          <label class="block text-gray-600 mb-1">Unidade de Medida</label>
+          <input id="editUnidade" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500" />
+        </div>
+
+        <div class="mb-3">
+          <label class="block text-gray-600 mb-1">Estoque Atual</label>
+          <input id="editEstoque" type="number" step="0.01" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500" />
+        </div>
+
+        <div class="flex justify-end space-x-3">
+          <button onclick="fecharModalEdicao()" class="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500">Cancelar</button>
+          <button onclick="salvarEdicao()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Salvar</button>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -171,7 +211,31 @@
             }
         }
 
-        // Editar insumo (simplificado)
+        // Filtro de busca em tempo real
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const termo = this.value.toLowerCase();
+            const linhas = document.querySelectorAll('#insumosTableBody tr');
+
+            linhas.forEach(linha => {
+                const nome = linha.children[1].textContent.toLowerCase();
+                linha.style.display = nome.includes(termo) ? '' : 'none';
+            });
+        });
+
+        // Modal de edição
+        function abrirModalEdicao(insumo) {
+            const modal = document.getElementById('editModal');
+            document.getElementById('editId').value = insumo.id;
+            document.getElementById('editNome').value = insumo.nome;
+            document.getElementById('editUnidade').value = insumo.unidade_medida;
+            document.getElementById('editEstoque').value = insumo.estoque_atual;
+            modal.classList.remove('hidden');
+        }
+
+        function fecharModalEdicao() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
         async function editarInsumo(id) {
             const insumos = await (await fetch(`${API_URL}/api/insumos`)).json();
             const insumoToEdit = insumos.find(i => i.id === id);
@@ -180,20 +244,16 @@
                 alert('Insumo não encontrado.');
                 return;
             }
+            abrirModalEdicao(insumoToEdit);
+        }
 
-            const novoNome = prompt('Editar Nome:', insumoToEdit.nome);
-            if (novoNome === null) return;
-
-            const novaUnidadeMedida = prompt('Editar Unidade de Medida:', insumoToEdit.unidade_medida);
-            if (novaUnidadeMedida === null) return;
-
-            const novoEstoque = prompt('Editar Estoque Atual:', insumoToEdit.estoque_atual);
-            if (novoEstoque === null) return;
-
+        // Salvar alterações no modal
+        async function salvarEdicao() {
+            const id = document.getElementById('editId').value;
             const data = {
-                nome: novoNome,
-                unidade_medida: novaUnidadeMedida,
-                estoque_atual: parseFloat(novoEstoque)
+                nome: document.getElementById('editNome').value,
+                unidade_medida: document.getElementById('editUnidade').value,
+                estoque_atual: parseFloat(document.getElementById('editEstoque').value)
             };
 
             try {
@@ -207,6 +267,7 @@
 
                 if (response.ok) {
                     alert('✅ Insumo atualizado com sucesso!');
+                    fecharModalEdicao();
                     carregarInsumos();
                 } else {
                     alert('❌ Erro ao atualizar insumo.');
@@ -263,7 +324,6 @@
         });
       }
 
-      // Botão de instalação PWA
       let deferredPrompt;
       window.addEventListener('beforeinstallprompt', (event) => {
         event.preventDefault();
