@@ -9,7 +9,7 @@ CORS(app)
 
 DATABASE = 'restaurante.db'
 
-def get_db():
+def get_db_connection():
     """Retorna conexão com o banco de dados (SQLite local ou PostgreSQL no Render)"""
     db = getattr(g, '_database', None)
     if db is None:
@@ -43,7 +43,7 @@ def close_connection(exception):
 def init_db():
     """Inicializa o banco de dados com as tabelas necessárias"""
     with app.app_context():
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         # Verifica se está usando PostgreSQL ou SQLite
@@ -174,7 +174,7 @@ def login():
                 'message': 'Nome de usuário e senha não podem estar vazios.'
             }), 400
         
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         cursor.execute(
             "SELECT id, username, password_hash FROM usuarios WHERE username = %s" if os.environ.get('DATABASE_URL') else "SELECT id, username, password_hash FROM usuarios WHERE username = ?",
@@ -220,7 +220,7 @@ def login():
 def verificar_usuarios():
     """Rota auxiliar para verificar usuários cadastrados"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         cursor.execute("SELECT COUNT(*) as total FROM usuarios")
         resultado = cursor.fetchone()
@@ -278,7 +278,7 @@ def cadastrar_usuario():
             }), 400
         
         # Verifica se o usuário já existe
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -322,7 +322,7 @@ def cadastrar_usuario():
 def get_insumos():
     """Lista todos os insumos"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         cursor.execute('SELECT id, nome, unidade_medida, estoque_atual FROM insumos ORDER BY nome')
         insumos = cursor.fetchall()
@@ -355,7 +355,7 @@ def add_insumo():
         if estoque_atual < 0:
             return jsonify({'error': 'Estoque não pode ser negativo'}), 400
         
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -394,7 +394,7 @@ def add_insumo():
 
 @app.route('/produtos', methods=['GET'])
 def get_produtos():
-    db = get_db()
+    db = get_db_connection()
     cursor = db.cursor()
     cursor.execute('SELECT id, nome, preco_venda FROM produtos')
     produtos = cursor.fetchall()
@@ -404,7 +404,7 @@ def get_produtos():
 def add_produto():
     """Adiciona um novo produto"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         data = request.get_json()
         
@@ -447,7 +447,7 @@ def add_produto():
 
 @app.route('/fichas_tecnicas/<int:produto_id>', methods=['GET'])
 def get_ficha_tecnica(produto_id):
-    db = get_db()
+    db = get_db_connection()
     cursor = db.cursor()
     
     is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -483,7 +483,7 @@ def add_ficha_tecnica():
         if quantidade_necessaria <= 0:
             return jsonify({'error': 'Quantidade deve ser maior que zero'}), 400
         
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -522,7 +522,7 @@ def registrar_venda_pdv():
     if not itens_carrinho:
         return jsonify({'error': 'Carrinho de compras vazio.'}), 400
 
-    db = get_db()
+    db = get_db_connection()
     cursor = db.cursor()
     
     is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -579,7 +579,7 @@ def registrar_venda_pdv():
 def get_mesas():
     """Lista todas as mesas com status e comanda ativa"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -634,7 +634,7 @@ def add_mesa():
         if numero <= 0 or capacidade <= 0:
             return jsonify({'error': 'Número e capacidade devem ser maiores que zero'}), 400
         
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -680,7 +680,7 @@ def update_mesa(mesa_id):
         if not data:
             return jsonify({'error': 'Dados não fornecidos'}), 400
         
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -725,7 +725,7 @@ def update_mesa(mesa_id):
 def delete_mesa(mesa_id):
     """Remove uma mesa"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -754,7 +754,7 @@ def get_comandas():
     try:
         status_filter = request.args.get('status', None)
         
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -811,7 +811,7 @@ def get_comandas():
 def get_comanda_detalhes(comanda_id):
     """Retorna detalhes de uma comanda com seus itens"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -900,7 +900,7 @@ def abrir_comanda():
         
         mesa_id = int(data['mesa_id'])
         
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -996,7 +996,7 @@ def add_item_comanda(comanda_id):
         if quantidade <= 0:
             return jsonify({'error': 'Quantidade deve ser maior que zero'}), 400
         
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -1067,7 +1067,7 @@ def add_item_comanda(comanda_id):
 def remove_item_comanda(comanda_id, item_id):
     """Remove um item da comanda"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -1104,7 +1104,7 @@ def remove_item_comanda(comanda_id, item_id):
 def fechar_comanda(comanda_id):
     """Fecha a comanda e registra as vendas"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -1163,7 +1163,7 @@ def fechar_comanda(comanda_id):
 def cancelar_comanda(comanda_id):
     """Cancela a comanda sem registrar vendas"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
@@ -1205,7 +1205,7 @@ def cancelar_comanda(comanda_id):
 def get_estatisticas_dashboard():
     """Retorna estatísticas gerais para o dashboard"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         is_postgres = os.environ.get('DATABASE_URL') is not None
         
@@ -1258,7 +1258,7 @@ def get_estatisticas_dashboard():
 def get_produtos_mais_vendidos():
     """Retorna os produtos mais vendidos (últimos 30 dias)"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         is_postgres = os.environ.get('DATABASE_URL') is not None
         
@@ -1307,7 +1307,7 @@ def get_produtos_mais_vendidos():
 def get_estoque_baixo():
     """Retorna insumos com estoque baixo (menos de 10 unidades)"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         
         query = """
@@ -1340,7 +1340,7 @@ def get_estoque_baixo():
 def get_vendas_por_dia():
     """Retorna vendas agrupadas por dia (últimos 7 dias)"""
     try:
-        db = get_db()
+        db = get_db_connection()
         cursor = db.cursor()
         is_postgres = os.environ.get('DATABASE_URL') is not None
         
