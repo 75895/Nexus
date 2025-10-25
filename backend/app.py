@@ -277,7 +277,8 @@ def get_insumos():
     try:
         db = get_db_connection()
         cursor = db.cursor()
-        cursor.execute('SELECT id, nome, unidade_medida, estoque_atual FROM insumos ORDER BY nome')
+        cursor.execute('SELECT id, nome, unidade_medida, quantidade_estoque AS estoque_atual FROM insumos ORDER BY nome')
+
         insumos = cursor.fetchall()
         
         # Converte para lista de dicionários
