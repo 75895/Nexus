@@ -3,7 +3,8 @@
 -- Excluir tabelas dependentes ANTES das tabelas principais.
 -- ========================================
 
-DROP TABLE IF EXISTS ficha_tecnica; 
+DROP TABLE IF EXISTS ficha_itens; -- Novo!
+DROP TABLE IF EXISTS fichas_tecnicas; -- Novo!
 DROP TABLE IF EXISTS comanda_itens;
 DROP TABLE IF EXISTS vendas;
 DROP TABLE IF EXISTS comandas;
@@ -13,39 +14,53 @@ DROP TABLE IF EXISTS produtos;
 DROP TABLE IF EXISTS usuarios;
 
 -- ========================================
--- CRIAÇÃO DE TABELAS (CORREÇÃO: SERIAL PRIMARY KEY)
+-- CRIAÇÃO DE TABELAS
 -- ========================================
 
 CREATE TABLE insumos (
     id SERIAL PRIMARY KEY, 
-    nome TEXT NOT NULL,
+    nome TEXT NOT NULL UNIQUE, -- Adicionado UNIQUE
     unidade_medida TEXT NOT NULL,
-    quantidade_estoque REAL NOT NULL DEFAULT 0,
-    estoque_minimo REAL NOT NULL DEFAULT 0,
-    preco_unitario REAL NOT NULL DEFAULT 0,
+    quantidade_estoque REAL NOT NULL DEFAULT 0.0,
+    estoque_minimo REAL NOT NULL DEFAULT 0.0,
+    preco_unitario REAL NOT NULL DEFAULT 0.0,
     fornecedor TEXT
 );
 
 CREATE TABLE produtos (
     id SERIAL PRIMARY KEY, 
-    nome TEXT NOT NULL,
+    nome TEXT NOT NULL UNIQUE, -- Adicionado UNIQUE
     preco_venda REAL NOT NULL
-);
-
-CREATE TABLE ficha_tecnica (
-    id SERIAL PRIMARY KEY, 
-    produto_id INTEGER NOT NULL,
-    insumo_id INTEGER NOT NULL,
-    quantidade_necessaria REAL NOT NULL,
-    FOREIGN KEY (produto_id) REFERENCES produtos (id) ON DELETE CASCADE,
-    FOREIGN KEY (insumo_id) REFERENCES insumos (id) ON DELETE CASCADE
 );
 
 CREATE TABLE usuarios (
     id SERIAL PRIMARY KEY, 
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    data_criacao TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    -- CORREÇÃO: Usar tipo TIMESTAMP nativo
+    data_criacao TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========================================
+-- FICHAS TÉCNICAS (ESTRUTURA CORRIGIDA para 1:N)
+-- ========================================
+
+CREATE TABLE fichas_tecnicas ( -- Tabela Principal da Ficha
+    id SERIAL PRIMARY KEY,
+    produto_id INTEGER NOT NULL UNIQUE, -- Uma ficha por produto
+    nome TEXT,
+    descricao TEXT,
+    FOREIGN KEY (produto_id) REFERENCES produtos (id) ON DELETE CASCADE
+);
+
+CREATE TABLE ficha_itens ( -- Tabela de Insumos da Ficha
+    id SERIAL PRIMARY KEY,
+    ficha_id INTEGER NOT NULL,
+    insumo_id INTEGER NOT NULL,
+    quantidade_necessaria REAL NOT NULL,
+    FOREIGN KEY (ficha_id) REFERENCES fichas_tecnicas (id) ON DELETE CASCADE,
+    FOREIGN KEY (insumo_id) REFERENCES insumos (id) ON DELETE RESTRICT,
+    UNIQUE (ficha_id, insumo_id) -- Garante que um insumo só aparece uma vez na mesma ficha
 );
 
 -- ========================================
@@ -57,16 +72,17 @@ CREATE TABLE mesas (
     numero INTEGER NOT NULL UNIQUE,
     capacidade INTEGER NOT NULL,
     localizacao TEXT,
-    -- Status pode ser 'disponivel', 'ocupada', 'suja'
+    -- Status pode ser 'disponivel', 'ocupada', 'suja', 'reservada'
     status TEXT NOT NULL DEFAULT 'disponivel' 
 );
 
 CREATE TABLE comandas (
     id SERIAL PRIMARY KEY, 
     mesa_id INTEGER NOT NULL,
-    data_abertura TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    data_fechamento TEXT,
-    -- Status pode ser 'aberta', 'fechada', 'paga'
+    -- CORREÇÃO: Usar tipo TIMESTAMP nativo
+    data_abertura TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP, 
+    data_fechamento TIMESTAMP WITHOUT TIME ZONE,
+    -- Status pode ser 'aberta', 'paga', 'cancelada'
     status TEXT NOT NULL DEFAULT 'aberta', 
     total REAL NOT NULL DEFAULT 0.00,
     FOREIGN KEY (mesa_id) REFERENCES mesas (id) ON DELETE RESTRICT
@@ -84,22 +100,25 @@ CREATE TABLE comanda_itens (
 );
 
 -- ========================================
--- TABELA VENDAS RESTRUTURADA 
+-- TABELA VENDAS (Corrigida a restrição)
 -- ========================================
 
 CREATE TABLE vendas (
     id SERIAL PRIMARY KEY, 
     
-    -- Campos de Pagamento (Nova Estrutura)
+    -- Rastreamento da Origem
+    comanda_id INTEGER UNIQUE NOT NULL, -- CRÍTICO: comanda_id deve ser UNIQUE e NOT NULL na venda
+    
+    -- Campos de Pagamento 
     valor_total REAL NOT NULL,
     valor_pago REAL NOT NULL,
     troco REAL NOT NULL DEFAULT 0.00,
     metodo_pagamento TEXT NOT NULL, 
     
-    -- Rastreamento da Origem
-    comanda_id INTEGER, 
-    data_venda TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- CORREÇÃO: Usar tipo TIMESTAMP nativo
+    data_venda TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP, 
     observacoes TEXT,
     
-    FOREIGN KEY (comanda_id) REFERENCES comandas (id) ON DELETE SET NULL
+    -- CRÍTICO: Garantir integridade referencial com RESTRICT
+    FOREIGN KEY (comanda_id) REFERENCES comandas (id) ON DELETE RESTRICT
 );
