@@ -71,11 +71,11 @@ def init_db():
                 cursor.execute(sql_script)
             else:
                 # SQLite usa executescript()
-                cursor.executescript(sql_script)
-
+                db.executescript(sql_script) # Usar db.executescript para SQLite
+                # cursor.executescript(sql_script) # Comentado: A conexão SQLite tem o método, mas a conexão Postgres (db) não
             db.commit()
             return True
-        
+            
         except Exception as e:
             db.rollback() 
             raise e 
@@ -84,7 +84,6 @@ def init_db():
 def initialize_db_route():
     try:
         init_db()
-        # migrate_table_insumos() # Não chame a migração aqui, o schema.sql já faz o reset
         return jsonify({'message': 'Banco de dados inicializado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': f'Erro ao inicializar o banco de dados: {e}'}), 500
@@ -263,6 +262,102 @@ def cadastrar_usuario():
         }), 500
 
 # ========================================
+# ROTAS DE MESAS (NOVAS - CORRIGE ERRO 404/JSON)
+# ========================================
+
+@app.route('/api/mesas', methods=['GET'])
+def list_mesas():
+    """Lista todas as mesas ou filtra por status."""
+    try:
+        status_filter = request.args.get('status')
+        db = get_db_connection()
+        cursor = db.cursor()
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        query = 'SELECT id, numero, capacidade, localizacao, status FROM mesas'
+        params = ()
+        
+        # O placeholder do PostgreSQL é %s e o do psycopg2 (com RealDictCursor) aceita 
+        # a sintaxe de tupla para a execução, mesmo que não seja um string formatado.
+        if status_filter:
+            query += ' WHERE status = %s' if is_postgres else ' WHERE status = ?'
+            params = (status_filter,)
+            
+        query += ' ORDER BY numero'
+        
+        cursor.execute(query, params)
+        mesas = cursor.fetchall()
+        
+        return jsonify([dict(m) for m in mesas]), 200
+    except Exception as e:
+        return jsonify({'error': f'Erro ao listar mesas: {str(e)}'}), 500
+
+@app.route('/api/mesas', methods=['POST'])
+def add_mesa():
+    """Adiciona uma nova mesa."""
+    try:
+        data = request.get_json()
+        if not data or 'numero' not in data or 'capacidade' not in data:
+            return jsonify({'error': 'Número e capacidade são obrigatórios'}), 400
+            
+        numero = int(data['numero'])
+        capacidade = int(data['capacidade'])
+        localizacao = data.get('localizacao', '').strip()
+        
+        db = get_db_connection()
+        cursor = db.cursor()
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # O status é sempre 'disponivel' por padrão, mas é bom especificar as colunas.
+        # Ajustei o RETURNING para o PostgreSQL
+        query = 'INSERT INTO mesas (numero, capacidade, localizacao) VALUES (%s, %s, %s) RETURNING id, numero, capacidade, localizacao, status' if is_postgres else 'INSERT INTO mesas (numero, capacidade, localizacao) VALUES (?, ?, ?)'
+        
+        cursor.execute(query, (numero, capacidade, localizacao))
+        
+        if is_postgres:
+            mesa_nova = dict(cursor.fetchone())
+        else:
+            mesa_id = cursor.lastrowid
+            cursor.execute('SELECT id, numero, capacidade, localizacao, status FROM mesas WHERE id = ?', (mesa_id,))
+            mesa_nova = dict(cursor.fetchone())
+            
+        db.commit()
+        return jsonify(mesa_nova), 201
+    
+    except Exception as e:
+        if 'duplicate key value violates unique constraint "mesas_numero_key"' in str(e):
+             return jsonify({'error': 'Já existe uma mesa com este número.'}), 409
+        
+        return jsonify({'error': f'Erro ao adicionar mesa: {str(e)}'}), 500
+
+@app.route('/api/mesas/<int:mesa_id>', methods=['PUT'])
+def update_mesa(mesa_id):
+    """Atualiza o status de uma mesa."""
+    try:
+        data = request.get_json()
+        status = data.get('status')
+        
+        if not status or status not in ['disponivel', 'ocupada', 'reservada']:
+            return jsonify({'error': 'Status inválido. Deve ser disponivel, ocupada ou reservada.'}), 400
+        
+        db = get_db_connection()
+        cursor = db.cursor()
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        query = 'UPDATE mesas SET status = %s WHERE id = %s' if is_postgres else 'UPDATE mesas SET status = ? WHERE id = ?'
+        
+        cursor.execute(query, (status, mesa_id))
+        db.commit()
+        
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Mesa não encontrada.'}), 404
+            
+        return jsonify({'message': f'Status da Mesa {mesa_id} atualizado para {status}'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Erro ao atualizar mesa: {str(e)}'}), 500
+
+# ========================================
 # ROTAS DE INSUMOS (CORRIGIDAS)
 # ========================================
 
@@ -274,7 +369,7 @@ def get_insumos():
         cursor = db.cursor()
         # SELECT para buscar as colunas básicas
         cursor.execute('''
-    SELECT id, nome, unidade_medida, quantidade_estoque
+    SELECT id, nome, unidade_medida, quantidade_estoque, estoque_minimo, preco_unitario, fornecedor 
     FROM insumos ORDER BY nome
 ''')
         insumos = cursor.fetchall()
@@ -302,38 +397,47 @@ def add_insumo():
         unidade_medida = data['unidade_medida'].strip()
         # Usamos 'quantidade_estoque' que é o nome correto do campo na tabela insumos
         quantidade_estoque = float(data.get('quantidade_estoque', 0))
+        estoque_minimo = float(data.get('estoque_minimo', 0))
+        preco_unitario = float(data.get('preco_unitario', 0.0))
+        fornecedor = data.get('fornecedor', '').strip()
         
         if not nome or not unidade_medida:
             return jsonify({'error': 'Nome e unidade de medida não podem estar vazios'}), 400
         
-        if quantidade_estoque < 0:
-            return jsonify({'error': 'Estoque não pode ser negativo'}), 400
+        if quantidade_estoque < 0 or estoque_minimo < 0 or preco_unitario < 0:
+            return jsonify({'error': 'Valores numéricos não podem ser negativos'}), 400
         
         db = get_db_connection()
         cursor = db.cursor()
         
         is_postgres = os.environ.get('DATABASE_URL') is not None
         
+        # Inserir todos os campos que estão no schema.sql
         if is_postgres:
-            # Query ajustada para o que realmente tem na tabela
+            query = '''
+                INSERT INTO insumos (nome, unidade_medida, quantidade_estoque, estoque_minimo, preco_unitario, fornecedor) 
+                VALUES (%s, %s, %s, %s, %s, %s) 
+                RETURNING id, nome, unidade_medida, quantidade_estoque, estoque_minimo, preco_unitario, fornecedor
+            '''
             cursor.execute(
-                'INSERT INTO insumos (nome, unidade_medida, quantidade_estoque) VALUES (%s, %s, %s) RETURNING id, nome, unidade_medida, quantidade_estoque',
-                (nome, unidade_medida, quantidade_estoque)
+                query,
+                (nome, unidade_medida, quantidade_estoque, estoque_minimo, preco_unitario, fornecedor)
             )
             insumo = dict(cursor.fetchone())
         else:
+            query = '''
+                INSERT INTO insumos (nome, unidade_medida, quantidade_estoque, estoque_minimo, preco_unitario, fornecedor) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            '''
             cursor.execute(
-                'INSERT INTO insumos (nome, unidade_medida, quantidade_estoque) VALUES (?, ?, ?)',
-                (nome, unidade_medida, quantidade_estoque)
+                query,
+                (nome, unidade_medida, quantidade_estoque, estoque_minimo, preco_unitario, fornecedor)
             )
             new_id = cursor.lastrowid
-            insumo = {
-                'id': new_id,
-                'nome': nome,
-                'unidade_medida': unidade_medida,
-                'quantidade_estoque': float(quantidade_estoque)
-            }
-        
+            # Busca o insumo completo para retornar
+            cursor.execute('SELECT id, nome, unidade_medida, quantidade_estoque, estoque_minimo, preco_unitario, fornecedor FROM insumos WHERE id = ?', (new_id,))
+            insumo = dict(cursor.fetchone())
+
         db.commit()
         return jsonify(insumo), 201
         
@@ -362,13 +466,27 @@ def update_insumo(insumo_id):
             updates.append('unidade_medida = %s' if is_postgres else 'unidade_medida = ?')
             values.append(data['unidade_medida'].strip())
         if 'quantidade_estoque' in data:
-            # Garante que o valor é numérico e não negativo
             quantidade_estoque = float(data['quantidade_estoque'])
             if quantidade_estoque < 0:
                 return jsonify({'error': 'Estoque não pode ser negativo'}), 400
             updates.append('quantidade_estoque = %s' if is_postgres else 'quantidade_estoque = ?')
             values.append(quantidade_estoque)
-            
+        if 'estoque_minimo' in data:
+            estoque_minimo = float(data['estoque_minimo'])
+            if estoque_minimo < 0:
+                return jsonify({'error': 'Estoque mínimo não pode ser negativo'}), 400
+            updates.append('estoque_minimo = %s' if is_postgres else 'estoque_minimo = ?')
+            values.append(estoque_minimo)
+        if 'preco_unitario' in data:
+            preco_unitario = float(data['preco_unitario'])
+            if preco_unitario < 0:
+                return jsonify({'error': 'Preço unitário não pode ser negativo'}), 400
+            updates.append('preco_unitario = %s' if is_postgres else 'preco_unitario = ?')
+            values.append(preco_unitario)
+        if 'fornecedor' in data:
+            updates.append('fornecedor = %s' if is_postgres else 'fornecedor = ?')
+            values.append(data['fornecedor'].strip())
+
         if not updates:
             return jsonify({'error': 'Nenhum campo para atualizar'}), 400
         
@@ -408,6 +526,8 @@ def delete_insumo(insumo_id):
         return jsonify({'message': 'Insumo removido com sucesso'}), 200
         
     except Exception as e:
+        if 'violates foreign key constraint' in str(e):
+             return jsonify({'error': 'Não é possível remover. Este insumo é usado em uma Ficha Técnica.'}), 409
         return jsonify({'error': f'Erro ao remover insumo: {str(e)}'}), 500
 
 
@@ -416,7 +536,6 @@ def delete_insumo(insumo_id):
 # ========================================
 
 # NOVA ROTA: Alerta de Estoque Baixo (CORRIGIDA - Resolve Erro 500)
-# Renomeada a coluna 'estoque_atual' e removido o 'estoque_minimo' que causa problemas se não estiver no schema
 @app.route('/api/estoque-baixo', methods=['GET'])
 def estoque_baixo():
     """Retorna a lista de insumos com estoque abaixo do mínimo (ou 10)"""
@@ -424,12 +543,11 @@ def estoque_baixo():
         db = get_db_connection()
         cursor = db.cursor()
         
-        # CORREÇÃO CRÍTICA: Removemos 'estoque_minimo' do SELECT para evitar o erro 500
-        # e usamos a coluna correta 'quantidade_estoque' no SELECT e WHERE.
+        # Usamos as colunas corretas 'quantidade_estoque' e 'estoque_minimo'
         query = '''
-            SELECT id, nome, unidade_medida, quantidade_estoque 
+            SELECT id, nome, unidade_medida, quantidade_estoque, estoque_minimo
             FROM insumos
-            WHERE quantidade_estoque <= 10  -- Usando um threshold seguro (ex: 10)
+            WHERE quantidade_estoque <= estoque_minimo
             ORDER BY nome
         '''
         
@@ -444,7 +562,7 @@ def estoque_baixo():
                 "nome": alerta_dict['nome'],
                 "estoque_atual": alerta_dict['quantidade_estoque'],
                 "unidade_medida": alerta_dict['unidade_medida'],
-                "estoque_minimo": 10 # Retornamos 10 para o Frontend saber o threshold
+                "estoque_minimo": alerta_dict['estoque_minimo']
             })
             
         return jsonify(alertas_list), 200
@@ -661,13 +779,11 @@ def registrar_venda_pdv_estoque():
 
                 insumo_dict = dict(resultado_insumo) if not isinstance(resultado_insumo, dict) else resultado_insumo
                 insumo_nome = insumo_dict['nome']
-                # ATENÇÃO: Mudança de 'estoque_atual' para 'quantidade_estoque'
                 estoque_atual = insumo_dict['quantidade_estoque'] 
 
                 if estoque_atual < necessario_total:
                     raise ValueError(f'Estoque insuficiente para o insumo: "{insumo_nome}". Necessário: {necessario_total}, Disponível: {estoque_atual}')
 
-                # ATENÇÃO: Mudança de 'estoque_atual' para 'quantidade_estoque' no UPDATE
                 query_update = 'UPDATE insumos SET quantidade_estoque = quantidade_estoque - %s WHERE id = %s' if is_postgres else 'UPDATE insumos SET quantidade_estoque = quantidade_estoque - ? WHERE id = ?'
                 cursor.execute(query_update, (necessario_total, insumo_id))
             
@@ -747,7 +863,7 @@ def registrar_pagamento_comanda():
             comanda_status = comanda_db['status']
             
             if comanda_status == 'aberta':
-                 print(f"Aviso: Comanda {comanda_id} ainda estava 'aberta', forçando para 'paga'.")
+                print(f"Aviso: Comanda {comanda_id} ainda estava 'aberta', forçando para 'paga'.")
 
 
             # B) Atualizar Status da Comanda para 'paga'
@@ -771,4 +887,7 @@ def registrar_pagamento_comanda():
         print(f"Erro na transação de pagamento/comanda: {str(e)}")
         return jsonify({'error': f'Erro na transação de pagamento/comanda: {str(e)}'}), 500
 
-# FIM do código 
+# FIM do código
+if __name__ == '__main__':
+    # Esta parte é geralmente usada para desenvolvimento local (SQLite)
+    app.run(debug=True)
