@@ -6,7 +6,6 @@
     <title>Comanda - Sistema de Gestão de Restaurante</title>
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- PWA Manifest -->
     <link rel="manifest" href="/Nexus/manifest.json">
     <meta name="theme-color" content="#1e293b">
     <link rel="apple-touch-icon" href="/Nexus/imagens/icon-192x192.png">
@@ -18,7 +17,6 @@
     <meta name="application-name" content="Nexus">
 </head>
 <body class="bg-gray-100">
-    <!-- Navbar -->
     <nav class="bg-white shadow-md">
         <div class="container mx-auto px-6 py-4 flex justify-between items-center">
             <h1 class="text-2xl font-bold text-gray-800">Comanda <span id="comandaId"></span></h1>
@@ -28,9 +26,7 @@
         </div>
     </nav>
 
-    <!-- Container Principal -->
     <div class="container mx-auto px-6 py-8">
-        <!-- Informações da Mesa -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -48,7 +44,6 @@
             </div>
         </div>
 
-        <!-- Adicionar Produto -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Adicionar Produto</h2>
             <form id="itemForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -95,7 +90,6 @@
             </form>
         </div>
 
-        <!-- Itens da Comanda -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Itens do Pedido</h2>
             <div class="overflow-x-auto">
@@ -111,7 +105,6 @@
                         </tr>
                     </thead>
                     <tbody id="itensTableBody">
-                        <!-- Dados serão carregados dinamicamente -->
                         <tr>
                             <td colspan="6" class="px-4 py-4 text-center text-gray-500">Nenhum item adicionado</td>
                         </tr>
@@ -120,7 +113,6 @@
             </div>
         </div>
 
-        <!-- Ações -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex flex-wrap gap-4 justify-end">
                 <button 
@@ -130,10 +122,10 @@
                     Cancelar Comanda
                 </button>
                 <button 
-                    onclick="fecharComanda()" 
+                    onclick="iniciarPagamento()" 
                     class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
                 >
-                    Fechar Comanda e Finalizar
+                    Finalizar e Ir para PDV
                 </button>
             </div>
         </div>
@@ -245,6 +237,11 @@
                     statusElement.className = 'text-2xl font-bold text-red-600';
                 }
 
+                // Habilita/Desabilita ações se não estiver 'aberta'
+                const isAberta = comandaAtual.status === 'aberta';
+                document.getElementById('itemForm').style.display = isAberta ? 'grid' : 'none';
+                document.querySelector('.justify-end').querySelector('button:last-child').disabled = !isAberta;
+
                 // Atualizar tabela de itens
                 const tbody = document.getElementById('itensTableBody');
                 tbody.innerHTML = '';
@@ -268,7 +265,7 @@
                         <td class="px-4 py-2 text-right font-semibold">R$ ${item.subtotal.toFixed(2)}</td>
                         <td class="px-4 py-2 text-sm text-gray-600">${item.observacoes || '-'}</td>
                         <td class="px-4 py-2 text-center">
-                            ${comandaAtual.status === 'aberta' ? `
+                            ${isAberta ? `
                                 <button 
                                     onclick="removerItem(${item.id})" 
                                     class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
@@ -308,33 +305,38 @@
             }
         }
 
-        // Fechar comanda
-        async function fecharComanda() {
+        // NOVO: Função para iniciar o pagamento e ir para o PDV
+        async function iniciarPagamento() {
             if (!comandaAtual || comandaAtual.itens.length === 0) {
-                alert('Adicione pelo menos um item antes de fechar a comanda!');
+                alert('Adicione pelo menos um item antes de finalizar a comanda!');
                 return;
             }
 
-            if (!confirm(`Fechar comanda e registrar venda de R$ ${comandaAtual.total.toFixed(2)}?`)) {
+            if (!confirm(`Finalizar comanda para pagamento de R$ ${comandaAtual.total.toFixed(2)}? Você será redirecionado para o PDV.`)) {
                 return;
             }
 
+            // A lógica de "fechar" no backend deve ser mantida, mas a navegação muda.
+            // Se o seu backend for inteligente e puder ter um endpoint que apenas "prepara para o pagamento"
+            // sem de fato registrar a venda, seria ideal. Aqui vamos fazer o POST de fechar,
+            // e se der certo, redirecionamos para o PDV.
             try {
-                const response = await fetch(`${API_URL}/api/comandas/${comandaId}/fechar`, {
-                    method: 'POST'
-                });
+                 const response = await fetch(`${API_URL}/api/comandas/${comandaId}/fechar`, {
+                     method: 'POST'
+                 });
 
-                if (response.ok) {
-                    alert('Comanda fechada com sucesso!');
-                    window.location.href = '/Nexus/mesas.html';
-                } else {
-                    const error = await response.json();
-                    alert(`Erro: ${error.error}`);
-                }
-            } catch (error) {
-                console.error('Erro:', error);
-                alert('Erro ao conectar com o servidor.');
-            }
+                 if (response.ok) {
+                     alert('Comanda finalizada! Redirecionando para o PDV para pagamento.');
+                     // Redireciona para o PDV passando o ID da comanda
+                     window.location.href = `/Nexus/pdv.html?comanda_id=${comandaId}`;
+                 } else {
+                     const error = await response.json();
+                     alert(`Erro ao finalizar comanda: ${error.error}`);
+                 }
+             } catch (error) {
+                 console.error('Erro:', error);
+                 alert('Erro ao conectar com o servidor.');
+             }
         }
 
         // Cancelar comanda
@@ -362,7 +364,6 @@
         }
     </script>
 
-    <!-- Botão de Instalação PWA -->
     <button 
       id="install-button" 
       style="display: none; position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; background: #1e293b; color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: 600;"
@@ -370,7 +371,6 @@
       📱 Instalar App
     </button>
 
-    <!-- Registrar Service Worker para PWA -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

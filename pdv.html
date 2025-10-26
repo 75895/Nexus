@@ -3,497 +3,270 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDV - Ponto de Venda - Sistema Nexus</title>
-    <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
+    <title>PDV - Sistema de Gestão de Restaurante</title>
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- PWA Manifest -->
     <link rel="manifest" href="/Nexus/manifest.json">
     <meta name="theme-color" content="#1e293b">
     <link rel="apple-touch-icon" href="/Nexus/imagens/icon-192x192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Nexus">
+    <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Nexus">
-    
-    <style>
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-            #cupom-fiscal, #cupom-fiscal * {
-                visibility: visible;
-            }
-            #cupom-fiscal {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 80mm;
-            }
-        }
-    </style>
 </head>
 <body class="bg-gray-100">
-    <!-- Header -->
-    <header class="bg-gradient-to-r from-green-600 to-blue-600 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <h1 class="text-2xl font-bold">💰 PDV - Ponto de Venda</h1>
-            <div class="flex items-center gap-4">
-                <span id="usuario-nome" class="text-sm">Operador: Carregando...</span>
-                <a href="/Nexus/dashboard.html" class="bg-white text-green-600 px-4 py-2 rounded font-semibold hover:bg-gray-100 transition">
-                    Voltar ao Dashboard
-                </a>
-            </div>
+    <nav class="bg-white shadow-md">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">Ponto de Venda (PDV)</h1>
+            <a href="/Nexus/dashboard.html" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                Voltar
+            </a>
         </div>
-    </header>
+    </nav>
 
-    <div class="container mx-auto px-4 py-6">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Coluna Esquerda: Busca e Lista de Produtos -->
-            <div class="lg:col-span-2">
-                <!-- Busca de Produtos -->
-                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Buscar Produto</h2>
-                    <div class="flex gap-4">
+    <div class="container mx-auto px-6 py-8">
+        <div id="comandaInfoBox" class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-8 hidden" role="alert">
+            <p class="font-bold">Pagamento de Comanda:</p>
+            <p id="comandaMessage">Comanda #ID Mesa N° - Total: R$ 0,00</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-xl p-8">
+            <h2 class="text-3xl font-bold text-gray-700 mb-6">Finalizar Venda</h2>
+            
+            <form id="vendaForm">
+                
+                <input type="hidden" id="comanda_id_input" name="comanda_id" value="">
+
+                <div class="mb-6 border-b pb-4">
+                    <label class="block text-gray-600 mb-2 text-lg">Valor a Receber (Total) *</label>
+                    <input 
+                        type="number" 
+                        step="0.01"
+                        id="valorTotal" 
+                        placeholder="0.00" 
+                        value="0.00"
+                        min="0.01"
+                        class="w-full px-4 py-3 text-4xl font-extrabold text-blue-700 border border-blue-400 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-200 bg-blue-50"
+                        required
+                    />
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-gray-600 mb-2">Método de Pagamento *</label>
+                        <select 
+                            id="metodoPagamento" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                            required
+                        >
+                            <option value="dinheiro">Dinheiro</option>
+                            <option value="cartao_debito">Cartão de Débito</option>
+                            <option value="cartao_credito">Cartão de Crédito</option>
+                            <option value="pix">PIX</option>
+                            <option value="outros">Outros</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-600 mb-2">Valor Pago pelo Cliente</label>
                         <input 
-                            type="text" 
-                            id="busca-produto" 
-                            placeholder="Digite o nome do produto ou código..." 
-                            class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-lg"
-                        >
-                        <button 
-                            onclick="buscarProduto()" 
-                            class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition font-semibold"
-                        >
-                            Buscar
-                        </button>
+                            type="number" 
+                            step="0.01"
+                            id="valorPago" 
+                            placeholder="0.00" 
+                            value="0.00"
+                            min="0.00"
+                            class="w-full px-4 py-3 text-xl font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                            required
+                        />
                     </div>
                 </div>
-
-                <!-- Lista de Produtos Encontrados -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Produtos Disponíveis</h2>
-                    <div id="lista-produtos" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Produtos serão carregados aqui -->
-                    </div>
+                
+                <div class="mt-6 mb-8 p-4 bg-green-100 rounded-lg border-l-4 border-green-500">
+                    <p class="text-gray-700">Troco Necessário:</p>
+                    <p id="trocoDisplay" class="text-3xl font-extrabold text-green-700">R$ 0,00</p>
                 </div>
-            </div>
 
-            <!-- Coluna Direita: Carrinho e Pagamento -->
-            <div class="lg:col-span-1">
-                <!-- Carrinho -->
-                <div class="bg-white rounded-lg shadow-md p-6 mb-6 sticky top-6">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">🛒 Carrinho</h2>
-                    
-                    <div id="carrinho-itens" class="mb-4 max-h-64 overflow-y-auto">
-                        <p class="text-gray-500 text-center py-8">Carrinho vazio</p>
-                    </div>
-
-                    <div class="border-t pt-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-gray-600">Subtotal:</span>
-                            <span class="font-semibold" id="subtotal">R$ 0,00</span>
-                        </div>
-                        <div class="flex justify-between items-center mb-4">
-                            <span class="text-xl font-bold text-gray-800">TOTAL:</span>
-                            <span class="text-2xl font-bold text-green-600" id="total">R$ 0,00</span>
-                        </div>
-
-                        <button 
-                            onclick="abrirModalPagamento()" 
-                            id="btn-finalizar"
-                            class="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition font-bold text-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
-                            disabled
-                        >
-                            Finalizar Venda
-                        </button>
-
-                        <button 
-                            onclick="limparCarrinho()" 
-                            class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition font-semibold mt-2"
-                        >
-                            Limpar Carrinho
-                        </button>
-                    </div>
+                <div class="mb-8">
+                    <label class="block text-gray-600 mb-2">Observações da Venda (Opcional)</label>
+                    <textarea 
+                        id="observacoes" 
+                        rows="2"
+                        placeholder="Ex: Cliente utilizou cupom de desconto, pagamento misto..." 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    ></textarea>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Pagamento -->
-    <div id="modal-pagamento" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full mx-4">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">💳 Finalizar Pagamento</h2>
-            
-            <div class="mb-6">
-                <p class="text-gray-600 mb-2">Total a Pagar:</p>
-                <p class="text-3xl font-bold text-green-600" id="total-pagamento">R$ 0,00</p>
-            </div>
-
-            <div class="mb-6">
-                <label class="block text-gray-700 font-semibold mb-2">Forma de Pagamento:</label>
-                <select 
-                    id="forma-pagamento" 
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    onchange="alterarFormaPagamento()"
-                >
-                    <option value="dinheiro">💵 Dinheiro</option>
-                    <option value="credito">💳 Cartão de Crédito</option>
-                    <option value="debito">💳 Cartão de Débito</option>
-                    <option value="pix">📱 PIX</option>
-                </select>
-            </div>
-
-            <!-- Campo para Dinheiro -->
-            <div id="campo-dinheiro" class="mb-6">
-                <label class="block text-gray-700 font-semibold mb-2">Valor Recebido:</label>
-                <input 
-                    type="number" 
-                    id="valor-recebido" 
-                    placeholder="R$ 0,00" 
-                    step="0.01"
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    oninput="calcularTroco()"
-                >
-                <p class="text-sm text-gray-600 mt-2">Troco: <span id="troco" class="font-bold text-green-600">R$ 0,00</span></p>
-            </div>
-
-            <div class="flex gap-4">
+                
                 <button 
-                    onclick="fecharModalPagamento()" 
-                    class="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600 transition font-semibold"
+                    type="submit" 
+                    class="w-full bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 transition text-2xl font-bold shadow-lg"
                 >
-                    Cancelar
+                    <span id="botaoTexto">Registrar Venda</span>
                 </button>
-                <button 
-                    onclick="confirmarPagamento()" 
-                    class="flex-1 bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition font-bold"
-                >
-                    Confirmar
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cupom Fiscal (Oculto, apenas para impressão) -->
-    <div id="cupom-fiscal" class="hidden">
-        <div style="width: 80mm; font-family: monospace; font-size: 12px; padding: 10px;">
-            <div style="text-align: center; margin-bottom: 10px;">
-                <h2 style="margin: 0; font-size: 16px; font-weight: bold;">SISTEMA NEXUS</h2>
-                <p style="margin: 2px 0;">Restaurante & Gestão</p>
-                <p style="margin: 2px 0;">CNPJ: 00.000.000/0000-00</p>
-                <p style="margin: 2px 0;">Tel: (73) 99115-3879</p>
-                <hr style="border: 1px dashed #000; margin: 10px 0;">
-            </div>
-            
-            <div style="margin-bottom: 10px;">
-                <p style="margin: 2px 0;"><strong>Data:</strong> <span id="cupom-data"></span></p>
-                <p style="margin: 2px 0;"><strong>Hora:</strong> <span id="cupom-hora"></span></p>
-                <p style="margin: 2px 0;"><strong>Operador:</strong> <span id="cupom-operador"></span></p>
-                <hr style="border: 1px dashed #000; margin: 10px 0;">
-            </div>
-
-            <div id="cupom-itens" style="margin-bottom: 10px;">
-                <!-- Itens serão inseridos aqui -->
-            </div>
-
-            <hr style="border: 1px dashed #000; margin: 10px 0;">
-            
-            <div style="margin-bottom: 10px;">
-                <p style="margin: 2px 0; text-align: right;"><strong>TOTAL:</strong> <span id="cupom-total"></span></p>
-                <p style="margin: 2px 0; text-align: right;"><strong>Forma Pgto:</strong> <span id="cupom-forma"></span></p>
-                <p style="margin: 2px 0; text-align: right;" id="cupom-troco-linha"></p>
-            </div>
-
-            <hr style="border: 1px dashed #000; margin: 10px 0;">
-            
-            <div style="text-align: center; margin-top: 10px;">
-                <p style="margin: 2px 0; font-size: 10px;">Obrigado pela preferência!</p>
-                <p style="margin: 2px 0; font-size: 10px;">Volte sempre!</p>
-            </div>
+            </form>
         </div>
     </div>
 
     <script>
         const API_URL = 'https://nexus-backend-pvj4.onrender.com';
-        let carrinho = [];
-        let produtos = [];
+        let comandaIdParaVenda = null; 
 
-        // Carregar nome do usuário
         document.addEventListener('DOMContentLoaded', function() {
-            const usuarioNome = localStorage.getItem('usuario_nome');
-            if (usuarioNome) {
-                document.getElementById('usuario-nome').textContent = `Operador: ${usuarioNome}`;
+            const urlParams = new URLSearchParams(window.location.search);
+            comandaIdParaVenda = urlParams.get('comanda_id');
+
+            // 1. Verificar se é um pagamento de comanda
+            if (comandaIdParaVenda) {
+                carregarComandaParaPDV(comandaIdParaVenda);
+                document.getElementById('botaoTexto').textContent = 'Registrar Pagamento da Comanda';
+            } else {
+                console.log('PDV iniciado em modo de Venda Direta.');
+                // Lógica de PDV normal (vendas diretas)
             }
-            carregarProdutos();
+            
+            // 2. Adicionar listeners para cálculo de troco e submissão do formulário
+            document.getElementById('valorTotal').addEventListener('input', calcularTroco);
+            document.getElementById('valorPago').addEventListener('input', calcularTroco);
+            document.getElementById('vendaForm').addEventListener('submit', registrarVenda);
+
+            // Inicializar o cálculo do troco
+            calcularTroco();
         });
 
-        // Carregar todos os produtos
-        async function carregarProdutos() {
+        // =========================================================================
+        // FUNÇÃO DE CARREGAMENTO DA COMANDA
+        // =========================================================================
+        async function carregarComandaParaPDV(id) {
             try {
-                const response = await fetch(`${API_URL}/produtos`);
-                produtos = await response.json();
-                exibirProdutos(produtos);
-            } catch (error) {
-                console.error('Erro ao carregar produtos:', error);
-                alert('❌ Erro ao carregar produtos');
-            }
-        }
-
-        // Buscar produto
-        function buscarProduto() {
-            const termo = document.getElementById('busca-produto').value.toLowerCase();
-            if (!termo) {
-                exibirProdutos(produtos);
-                return;
-            }
-            
-            const produtosFiltrados = produtos.filter(p => 
-                p.nome.toLowerCase().includes(termo) || 
-                p.id.toString().includes(termo)
-            );
-            exibirProdutos(produtosFiltrados);
-        }
-
-        // Exibir produtos
-        function exibirProdutos(listaProdutos) {
-            const container = document.getElementById('lista-produtos');
-            
-            if (listaProdutos.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center col-span-2 py-8">Nenhum produto encontrado</p>';
-                return;
-            }
-
-            container.innerHTML = listaProdutos.map(produto => `
-                <div class="border border-gray-200 rounded-lg p-4 hover:shadow-lg transition cursor-pointer" onclick="adicionarAoCarrinho(${produto.id})">
-                    <h3 class="font-bold text-gray-800 mb-2">${produto.nome}</h3>
-                    <p class="text-2xl font-bold text-green-600">R$ ${produto.preco_venda.toFixed(2)}</p>
-                    <button class="mt-3 w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition">
-                        Adicionar
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        // Adicionar ao carrinho
-        function adicionarAoCarrinho(produtoId) {
-            const produto = produtos.find(p => p.id === produtoId);
-            if (!produto) return;
-
-            const itemExistente = carrinho.find(item => item.id === produtoId);
-            
-            if (itemExistente) {
-                itemExistente.quantidade++;
-            } else {
-                carrinho.push({
-                    id: produto.id,
-                    nome: produto.nome,
-                    preco: produto.preco_venda,
-                    quantidade: 1
-                });
-            }
-
-            atualizarCarrinho();
-        }
-
-        // Remover do carrinho
-        function removerDoCarrinho(produtoId) {
-            carrinho = carrinho.filter(item => item.id !== produtoId);
-            atualizarCarrinho();
-        }
-
-        // Alterar quantidade
-        function alterarQuantidade(produtoId, delta) {
-            const item = carrinho.find(item => item.id === produtoId);
-            if (!item) return;
-
-            item.quantidade += delta;
-            
-            if (item.quantidade <= 0) {
-                removerDoCarrinho(produtoId);
-            } else {
-                atualizarCarrinho();
-            }
-        }
-
-        // Atualizar carrinho
-        function atualizarCarrinho() {
-            const container = document.getElementById('carrinho-itens');
-            
-            if (carrinho.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center py-8">Carrinho vazio</p>';
-                document.getElementById('btn-finalizar').disabled = true;
-                document.getElementById('subtotal').textContent = 'R$ 0,00';
-                document.getElementById('total').textContent = 'R$ 0,00';
-                return;
-            }
-
-            container.innerHTML = carrinho.map(item => `
-                <div class="border-b border-gray-200 pb-3 mb-3">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="font-semibold text-gray-800">${item.nome}</span>
-                        <button onclick="removerDoCarrinho(${item.id})" class="text-red-500 hover:text-red-700">
-                            ✕
-                        </button>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-2">
-                            <button onclick="alterarQuantidade(${item.id}, -1)" class="bg-gray-200 px-2 py-1 rounded hover:bg-gray-300">-</button>
-                            <span class="font-semibold">${item.quantidade}</span>
-                            <button onclick="alterarQuantidade(${item.id}, 1)" class="bg-gray-200 px-2 py-1 rounded hover:bg-gray-300">+</button>
-                        </div>
-                        <span class="font-bold text-green-600">R$ ${(item.preco * item.quantidade).toFixed(2)}</span>
-                    </div>
-                </div>
-            `).join('');
-
-            const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
-            document.getElementById('subtotal').textContent = `R$ ${total.toFixed(2)}`;
-            document.getElementById('total').textContent = `R$ ${total.toFixed(2)}`;
-            document.getElementById('btn-finalizar').disabled = false;
-        }
-
-        // Limpar carrinho
-        function limparCarrinho() {
-            if (confirm('Deseja realmente limpar o carrinho?')) {
-                carrinho = [];
-                atualizarCarrinho();
-            }
-        }
-
-        // Abrir modal de pagamento
-        function abrirModalPagamento() {
-            const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
-            document.getElementById('total-pagamento').textContent = `R$ ${total.toFixed(2)}`;
-            document.getElementById('modal-pagamento').classList.remove('hidden');
-            alterarFormaPagamento();
-        }
-
-        // Fechar modal de pagamento
-        function fecharModalPagamento() {
-            document.getElementById('modal-pagamento').classList.add('hidden');
-            document.getElementById('valor-recebido').value = '';
-            document.getElementById('troco').textContent = 'R$ 0,00';
-        }
-
-        // Alterar forma de pagamento
-        function alterarFormaPagamento() {
-            const forma = document.getElementById('forma-pagamento').value;
-            const campoDinheiro = document.getElementById('campo-dinheiro');
-            
-            if (forma === 'dinheiro') {
-                campoDinheiro.classList.remove('hidden');
-            } else {
-                campoDinheiro.classList.add('hidden');
-            }
-        }
-
-        // Calcular troco
-        function calcularTroco() {
-            const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
-            const valorRecebido = parseFloat(document.getElementById('valor-recebido').value) || 0;
-            const troco = valorRecebido - total;
-            
-            document.getElementById('troco').textContent = `R$ ${Math.max(0, troco).toFixed(2)}`;
-        }
-
-        // Confirmar pagamento
-        async function confirmarPagamento() {
-            const forma = document.getElementById('forma-pagamento').value;
-            const total = carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
-            
-            // Validar dinheiro
-            if (forma === 'dinheiro') {
-                const valorRecebido = parseFloat(document.getElementById('valor-recebido').value) || 0;
-                if (valorRecebido < total) {
-                    alert('❌ Valor recebido é menor que o total!');
-                    return;
+                const response = await fetch(`${API_URL}/api/comandas/${id}`);
+                
+                if (!response.ok) {
+                    throw new Error('Comanda não encontrada ou erro ao carregar.');
                 }
+                
+                const comanda = await response.json();
+
+                // 1. Preencher o campo de Total da Venda
+                const valorTotalInput = document.getElementById('valorTotal');
+                valorTotalInput.value = comanda.total.toFixed(2);
+                valorTotalInput.readOnly = true; // Impede a alteração do valor da comanda
+
+                // 2. Preencher o campo Valor Pago para facilitar
+                document.getElementById('valorPago').value = comanda.total.toFixed(2);
+
+                // 3. Adicionar o ID da comanda ao campo oculto
+                document.getElementById('comanda_id_input').value = id;
+                
+                // 4. Mostrar o box de informação
+                const infoBox = document.getElementById('comandaInfoBox');
+                infoBox.classList.remove('hidden');
+                document.getElementById('comandaMessage').textContent = 
+                    `Comanda #${comanda.id} da Mesa ${comanda.mesa_numero} carregada. Total: R$ ${comanda.total.toFixed(2)}.`;
+                
+                // Recalcular troco
+                calcularTroco();
+
+            } catch (error) {
+                console.error('Erro ao carregar comanda para PDV:', error);
+                alert('Erro ao carregar a comanda. Iniciando PDV em modo de Venda Direta.');
+                comandaIdParaVenda = null;
+                document.getElementById('valorTotal').readOnly = false;
+                document.getElementById('comandaInfoBox').classList.add('hidden');
+            }
+        }
+
+        // =========================================================================
+        // FUNÇÃO DE CÁLCULO DE TROCO
+        // =========================================================================
+        function calcularTroco() {
+            const total = parseFloat(document.getElementById('valorTotal').value) || 0;
+            const pago = parseFloat(document.getElementById('valorPago').value) || 0;
+            
+            const troco = pago - total;
+            const trocoDisplay = document.getElementById('trocoDisplay');
+
+            if (troco < 0) {
+                // Cliente ainda deve
+                trocoDisplay.textContent = `Faltam R$ ${Math.abs(troco).toFixed(2)}`;
+                trocoDisplay.classList.remove('text-green-700', 'text-red-500');
+                trocoDisplay.classList.add('text-red-600');
+            } else {
+                // Troco para o cliente
+                trocoDisplay.textContent = `R$ ${troco.toFixed(2)}`;
+                trocoDisplay.classList.remove('text-red-600');
+                trocoDisplay.classList.add('text-green-700');
+            }
+        }
+
+        // =========================================================================
+        // FUNÇÃO DE REGISTRO DA VENDA (Pagamento)
+        // =========================================================================
+        async function registrarVenda(e) {
+            e.preventDefault();
+
+            const total = parseFloat(document.getElementById('valorTotal').value);
+            const pago = parseFloat(document.getElementById('valorPago').value);
+
+            if (pago < total) {
+                alert('O valor pago é insuficiente para cobrir o valor total!');
+                return;
+            }
+
+            const data = {
+                valor_total: total,
+                valor_pago: pago,
+                troco: pago - total,
+                metodo_pagamento: document.getElementById('metodoPagamento').value,
+                observacoes: document.getElementById('observacoes').value,
+                // Envia o ID da comanda APENAS se estiver presente
+                comanda_id: comandaIdParaVenda ? parseInt(comandaIdParaVenda) : null 
+            };
+
+            const confirmacaoMsg = comandaIdParaVenda 
+                ? `Confirmar pagamento da Comanda #${comandaIdParaVenda} de R$ ${data.valor_total.toFixed(2)}?`
+                : `Confirmar Venda Direta de R$ ${data.valor_total.toFixed(2)}?`;
+                
+            if (!confirm(confirmacaoMsg)) {
+                return;
             }
 
             try {
-                // Registrar venda no backend
-                const response = await fetch(`${API_URL}/vendas`, {
+                // Endpoint para registrar vendas/pagamentos
+                const response = await fetch(`${API_URL}/api/vendas`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        itens: carrinho.map(item => ({
-                            produto_id: item.id,
-                            quantidade: item.quantidade
-                        }))
-                    })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
                 });
 
                 if (response.ok) {
-                    alert('✅ Venda registrada com sucesso!');
-                    gerarCupomFiscal(forma, total);
-                    fecharModalPagamento();
-                    carrinho = [];
-                    atualizarCarrinho();
+                    alert('Venda/Pagamento registrado com sucesso!');
+                    
+                    // Se for pagamento de comanda, volta para a tela de mesas
+                    if (comandaIdParaVenda) {
+                        window.location.href = '/Nexus/mesas.html';
+                    } else {
+                        // Se for venda direta, reseta o formulário
+                        document.getElementById('vendaForm').reset();
+                        document.getElementById('valorTotal').value = '0.00';
+                        document.getElementById('valorPago').value = '0.00';
+                        calcularTroco();
+                    }
                 } else {
                     const error = await response.json();
-                    alert(`❌ Erro: ${error.error}`);
+                    alert(`Erro ao registrar venda: ${error.error}`);
                 }
             } catch (error) {
-                console.error('Erro ao registrar venda:', error);
-                alert('❌ Erro ao conectar com o servidor');
+                console.error('Erro:', error);
+                alert('Erro ao conectar com o servidor para registrar a venda.');
             }
         }
-
-        // Gerar cupom fiscal
-        function gerarCupomFiscal(forma, total) {
-            const agora = new Date();
-            const data = agora.toLocaleDateString('pt-BR');
-            const hora = agora.toLocaleTimeString('pt-BR');
-            const operador = localStorage.getItem('usuario_nome') || 'Sistema';
-
-            document.getElementById('cupom-data').textContent = data;
-            document.getElementById('cupom-hora').textContent = hora;
-            document.getElementById('cupom-operador').textContent = operador;
-            document.getElementById('cupom-total').textContent = `R$ ${total.toFixed(2)}`;
-            
-            const formaTexto = {
-                'dinheiro': 'Dinheiro',
-                'credito': 'Cartão de Crédito',
-                'debito': 'Cartão de Débito',
-                'pix': 'PIX'
-            };
-            document.getElementById('cupom-forma').textContent = formaTexto[forma];
-
-            // Itens
-            const itensHtml = carrinho.map(item => `
-                <p style="margin: 2px 0;">
-                    ${item.quantidade}x ${item.nome}
-                    <span style="float: right;">R$ ${(item.preco * item.quantidade).toFixed(2)}</span>
-                </p>
-            `).join('');
-            document.getElementById('cupom-itens').innerHTML = itensHtml;
-
-            // Troco (se dinheiro)
-            if (forma === 'dinheiro') {
-                const valorRecebido = parseFloat(document.getElementById('valor-recebido').value);
-                const troco = valorRecebido - total;
-                document.getElementById('cupom-troco-linha').innerHTML = `<strong>Troco:</strong> R$ ${troco.toFixed(2)}`;
-            } else {
-                document.getElementById('cupom-troco-linha').innerHTML = '';
-            }
-
-            // Imprimir
-            setTimeout(() => {
-                window.print();
-            }, 500);
-        }
-
-        // Buscar ao pressionar Enter
-        document.getElementById('busca-produto').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                buscarProduto();
-            }
-        });
+        
     </script>
-
-    <!-- Botão de Instalação PWA -->
+    
     <button 
       id="install-button" 
       style="display: none; position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; background: #1e293b; color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: 600;"
@@ -501,7 +274,6 @@
       📱 Instalar App
     </button>
 
-    <!-- Registrar Service Worker para PWA -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -538,4 +310,3 @@
     </script>
 </body>
 </html>
-
