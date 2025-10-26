@@ -3,15 +3,15 @@
 -- Excluir tabelas dependentes ANTES das tabelas principais.
 -- ========================================
 
-DROP TABLE IF EXISTS ficha_itens; -- Novo!
-DROP TABLE IF EXISTS fichas_tecnicas; -- Novo!
-DROP TABLE IF EXISTS comanda_itens;
-DROP TABLE IF EXISTS vendas;
-DROP TABLE IF EXISTS comandas;
-DROP TABLE IF EXISTS mesas;
-DROP TABLE IF EXISTS insumos;
-DROP TABLE IF EXISTS produtos;
-DROP TABLE IF EXISTS usuarios;
+DROP TABLE IF EXISTS ficha_itens CASCADE; 
+DROP TABLE IF EXISTS fichas_tecnicas CASCADE;
+DROP TABLE IF EXISTS comanda_itens CASCADE;
+DROP TABLE IF EXISTS vendas CASCADE;
+DROP TABLE IF EXISTS comandas CASCADE;
+DROP TABLE IF EXISTS mesas CASCADE;
+DROP TABLE IF EXISTS insumos CASCADE;
+DROP TABLE IF EXISTS produtos CASCADE;
+DROP TABLE IF EXISTS usuarios CASCADE;
 
 -- ========================================
 -- CRIAÇÃO DE TABELAS
