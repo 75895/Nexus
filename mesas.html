@@ -199,7 +199,7 @@
                             <div class="text-3xl font-bold mb-2">${mesa.numero}</div>
                             <div class="text-sm">Cap: ${mesa.capacidade}</div>
                             ${mesa.localizacao ? `<div class="text-xs mt-1">${mesa.localizacao}</div>` : ''}
-                            ${mesa.comanda_ativa ? `<div class="text-sm mt-2 font-semibold">R$ ${mesa.comanda_ativa.total.toFixed(2)}</div>` : ''}
+                            ${mesa.comanda_ativa ? `<div class="text-sm mt-2 font-semibold">R$ ${(parseFloat(mesa.comanda_ativa.total) || 0).toFixed(2)}</div>` : ''}
                         </div>
                     `;
                     
