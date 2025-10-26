@@ -12,7 +12,8 @@ DROP TABLE IF EXISTS vendas;        -- TABELA ALTERADA
 DROP TABLE IF EXISTS usuarios;
 
 CREATE TABLE insumos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
+-- ou: id INTEGER PRIMARY KEY,
     nome TEXT NOT NULL,
     unidade_medida TEXT NOT NULL,
     quantidade_estoque REAL NOT NULL DEFAULT 0,
@@ -22,13 +23,15 @@ CREATE TABLE insumos (
 );
 
 CREATE TABLE produtos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
+-- ou: id INTEGER PRIMARY KEY,
     nome TEXT NOT NULL,
     preco_venda REAL NOT NULL
 );
 
 CREATE TABLE ficha_tecnica (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
+-- ou: id INTEGER PRIMARY KEY,
     produto_id INTEGER NOT NULL,
     insumo_id INTEGER NOT NULL,
     quantidade_necessaria REAL NOT NULL,
@@ -37,7 +40,8 @@ CREATE TABLE ficha_tecnica (
 );
 
 CREATE TABLE usuarios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
+-- ou: id INTEGER PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     data_criacao TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -48,7 +52,8 @@ CREATE TABLE usuarios (
 -- ========================================
 
 CREATE TABLE mesas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
+-- ou: id INTEGER PRIMARY KEY,
     numero INTEGER NOT NULL UNIQUE,
     capacidade INTEGER NOT NULL,
     localizacao TEXT,
@@ -57,7 +62,8 @@ CREATE TABLE mesas (
 );
 
 CREATE TABLE comandas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
+-- ou: id INTEGER PRIMARY KEY,
     mesa_id INTEGER NOT NULL,
     data_abertura TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     data_fechamento TEXT,
@@ -68,7 +74,8 @@ CREATE TABLE comandas (
 );
 
 CREATE TABLE comanda_itens (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
+-- ou: id INTEGER PRIMARY KEY,
     comanda_id INTEGER NOT NULL,
     produto_id INTEGER NOT NULL,
     quantidade INTEGER NOT NULL,
@@ -84,7 +91,8 @@ CREATE TABLE comanda_itens (
 -- ATENÇÃO: Esta tabela é onde a rota POST /api/vendas vai inserir o registro final.
 
 CREATE TABLE vendas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
+-- ou: id INTEGER PRIMARY KEY,
     
     -- Campos de Pagamento (Nova Estrutura)
     valor_total REAL NOT NULL,
