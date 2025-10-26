@@ -3,37 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fichas Técnicas - Sistema de Gestão de Restaurante</title>
+    <title>Fichas Técnicas - Sistema de Gestão Nexus</title>
+    <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- PWA Manifest -->
     <link rel="manifest" href="/Nexus/manifest.json">
     <meta name="theme-color" content="#1e293b">
     <link rel="apple-touch-icon" href="/Nexus/imagens/icon-192x192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Nexus">
-    <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Nexus">
 </head>
 <body class="bg-gray-100">
-    <!-- Navbar -->
+    
+    <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">📝 Gestão de Fichas Técnicas</h1>
+            <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-semibold transition">
+                Sair
+            </button>
+        </div>
+    </header>
+
     <nav class="bg-white shadow-md">
-        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-gray-800">Gestão de Fichas Técnicas</h1>
-            <a href="/Nexus/dashboard.html" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
-                Voltar ao Dashboard
-            </a>
+        <div class="container mx-auto px-4">
+            <ul class="flex gap-6 py-3">
+                <li><a href="/Nexus/dashboard.html" class="text-gray-600 hover:text-blue-600">Dashboard</a></li>
+                <li><a href="/Nexus/pdv.html" class="text-gray-600 hover:text-blue-600">💰 PDV</a></li>
+                <li><a href="/Nexus/mesas.html" class="text-gray-600 hover:text-blue-600">Mesas</a></li>
+                <li><a href="/Nexus/insumos.html" class="text-gray-600 hover:text-blue-600">Estoque</a></li>
+                <li><a href="/Nexus/produtos.html" class="text-gray-600 hover:text-blue-600">Produtos</a></li>
+                <li><a href="/Nexus/fichas_tecnicas.html" class="text-blue-600 font-semibold hover:text-blue-800">Fichas Técnicas</a></li>
+                <li><a href="/Nexus/vendas.html" class="text-gray-600 hover:text-blue-600">Vendas</a></li>
+            </ul>
         </div>
     </nav>
 
-    <!-- Container Principal -->
     <div class="container mx-auto px-6 py-8">
-        <!-- Formulário de Criação de Ficha Técnica -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Criar Ficha Técnica</h2>
-            <form id="fichaForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Adicionar Insumo ao Produto</h2>
+            <form id="fichaForm" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
                     <label class="block text-gray-600 mb-2">Selecione o Produto</label>
                     <select 
@@ -59,26 +70,25 @@
                     <input 
                         type="number" 
                         id="quantidade_necessaria" 
-                        placeholder="Ex: 0.2" 
+                        placeholder="Ex: 0.2 para 200g (se for kg)" 
                         step="0.001"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                         required
                     />
                 </div>
-                <div class="md:col-span-3">
+                <div>
                     <button 
                         type="submit" 
-                        class="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600 transition"
+                        class="w-full bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600 transition font-semibold"
                     >
-                        Adicionar à Ficha Técnica
+                        Adicionar à Ficha
                     </button>
                 </div>
             </form>
         </div>
 
-        <!-- Visualização de Fichas Técnicas por Produto -->
         <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Fichas Técnicas Cadastradas</h2>
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Itens da Ficha Técnica</h2>
             <div class="mb-4">
                 <label class="block text-gray-600 mb-2">Selecione um Produto para Visualizar</label>
                 <select 
@@ -93,15 +103,15 @@
                 <table class="w-full table-auto">
                     <thead>
                         <tr class="bg-gray-200 text-gray-700">
-                            <th class="px-4 py-2 text-left">Insumo</th>
-                            <th class="px-4 py-2 text-left">Unidade</th>
-                            <th class="px-4 py-2 text-left">Quantidade Necessária</th>
+                            <th class="px-4 py-2 text-left w-5/12">Insumo</th>
+                            <th class="px-4 py-2 text-left w-2/12">Estoque em</th>
+                            <th class="px-4 py-2 text-left w-3/12">Quantidade Necessária</th>
+                            <th class="px-4 py-2 text-center w-2/12">Ação</th>
                         </tr>
                     </thead>
                     <tbody id="fichaTableBody">
-                        <!-- Dados serão carregados dinamicamente -->
                         <tr>
-                            <td colspan="3" class="px-4 py-4 text-center text-gray-500">Selecione um produto para visualizar sua ficha técnica</td>
+                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">Selecione um produto para visualizar sua ficha técnica</td>
                         </tr>
                     </tbody>
                 </table>
@@ -110,55 +120,81 @@
     </div>
 
     <script>
-        const API_URL = 'https://nexus-backend-pvj4.onrender.com'
+        // CORREÇÃO CRÍTICA: Padronização da URL com o prefixo /api
+        const API_URL = 'https://nexus-backend-pvj4.onrender.com/api'; 
+        let insumosCache = []; // Cache para armazenar insumos, incluindo a unidade de medida.
 
-        // Carregar produtos e insumos ao carregar a página
-        document.addEventListener('DOMContentLoaded', function() {
-            carregarProdutos();
-            carregarInsumos();
-            carregarProdutosParaVisualizacao();
-        });
+        // -------------------------
+        // FUNÇÕES GLOBAIS DE SEGURANÇA E UX
+        // -------------------------
 
-        // Cadastrar nova ficha técnica
-        document.getElementById('fichaForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const data = {
-                produto_id: parseInt(document.getElementById('produto_id').value),
-                insumo_id: parseInt(document.getElementById('insumo_id').value),
-                quantidade_necessaria: parseFloat(document.getElementById('quantidade_necessaria').value)
-            };
-
-            try {
-                const response = await fetch(`${API_URL}/fichas_tecnicas`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                if (response.ok) {
-                    alert('Item adicionado à ficha técnica com sucesso!');
-                    document.getElementById('quantidade_necessaria').value = '';
-                    // Recarregar a ficha técnica se um produto estiver selecionado para visualização
-                    visualizarFichaTecnica(); 
-                } else {
-                    alert('Erro ao adicionar item à ficha técnica.');
-                }
-            } catch (error) {
-                console.error('Erro:', error);
-                alert('Erro ao conectar com o servidor.');
+        function verificarLogin() {
+            if (!localStorage.getItem('usuario_id')) {
+                alert('Você precisa fazer login para acessar esta página!');
+                window.location.href = '/Nexus/index.html';
+                return false;
             }
+            return true;
+        }
+
+        function logout() {
+            localStorage.removeItem('usuario_id');
+            localStorage.removeItem('usuario_nome');
+            window.location.href = '/Nexus/index.html';
+        }
+        
+        // NOVO: Função para conversão e formatação da quantidade
+        function formatarQuantidade(quantidade, unidade) {
+            const num = parseFloat(quantidade);
+
+            // Se for KG e o valor for menor que 1, mostra em gramas (g)
+            if (unidade.toLowerCase() === 'kg' && num < 1 && num > 0) {
+                const gramas = num * 1000;
+                return `${gramas.toFixed(0)}g`;
+            }
+            
+            // Se for L e o valor for menor que 1, mostra em mililitros (ml)
+            if (unidade.toLowerCase() === 'l' && num < 1 && num > 0) {
+                const mililitros = num * 1000;
+                return `${mililitros.toFixed(0)}ml`;
+            }
+            
+            // Caso contrário, retorna o valor original com 3 casas decimais
+            return `${num.toFixed(3)} ${unidade}`;
+        }
+
+        // -------------------------
+        // FUNÇÕES DE DADOS E CARREGAMENTO
+        // -------------------------
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!verificarLogin()) return;
+            
+            // Carrega em paralelo todos os dados necessários
+            Promise.all([
+                carregarProdutos('produto_id'),
+                carregarProdutos('produto_visualizar'),
+                carregarInsumos()
+            ]).then(() => {
+                // Se houver um ID na URL, pré-seleciona e carrega a ficha
+                const urlParams = new URLSearchParams(window.location.search);
+                const produtoIdUrl = urlParams.get('produto_id');
+                if (produtoIdUrl) {
+                    document.getElementById('produto_visualizar').value = produtoIdUrl;
+                    visualizarFichaTecnica();
+                }
+            });
         });
 
-        // Carregar produtos para o formulário
-        async function carregarProdutos() {
+        // Carregar produtos para os selects
+        async function carregarProdutos(selectId) {
             try {
+                // Rota corrigida: /api/produtos
                 const response = await fetch(`${API_URL}/produtos`);
                 const produtos = await response.json();
 
-                const select = document.getElementById('produto_id');
+                const select = document.getElementById(selectId);
                 select.innerHTML = '<option value="">Selecione um produto...</option>';
 
                 produtos.forEach(produto => {
@@ -168,20 +204,21 @@
                     select.appendChild(option);
                 });
             } catch (error) {
-                console.error('Erro ao carregar produtos:', error);
+                console.error(`Erro ao carregar produtos para ${selectId}:`, error);
             }
         }
 
-        // Carregar insumos para o formulário
+        // Carregar insumos para o formulário e armazenar no cache
         async function carregarInsumos() {
             try {
-                const response = await fetch(`${API_URL}/api/insumos`);
-                const insumos = await response.json();
+                // Rota corrigida: /api/insumos
+                const response = await fetch(`${API_URL}/insumos`);
+                insumosCache = await response.json();
 
                 const select = document.getElementById('insumo_id');
                 select.innerHTML = '<option value="">Selecione um insumo...</option>';
 
-                insumos.forEach(insumo => {
+                insumosCache.forEach(insumo => {
                     const option = document.createElement('option');
                     option.value = insumo.id;
                     option.textContent = `${insumo.nome} (${insumo.unidade_medida})`;
@@ -191,81 +228,135 @@
                 console.error('Erro ao carregar insumos:', error);
             }
         }
+        
+        // -------------------------
+        // FUNÇÕES DE CRUD
+        // -------------------------
 
-        // Carregar produtos para visualização
-        async function carregarProdutosParaVisualizacao() {
+        // Cadastrar nova ficha técnica (Mantido, mas com API_URL corrigida)
+        document.getElementById('fichaForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!verificarLogin()) return;
+
+            const data = {
+                produto_id: parseInt(document.getElementById('produto_id').value),
+                insumo_id: parseInt(document.getElementById('insumo_id').value),
+                quantidade_necessaria: parseFloat(document.getElementById('quantidade_necessaria').value)
+            };
+
             try {
-                const response = await fetch(`${API_URL}/produtos`);
-                const produtos = await response.json();
-
-                const select = document.getElementById('produto_visualizar');
-                select.innerHTML = '<option value="">Selecione um produto...</option>';
-
-                produtos.forEach(produto => {
-                    const option = document.createElement('option');
-                    option.value = produto.id;
-                    option.textContent = produto.nome;
-                    select.appendChild(option);
+                // Rota corrigida: POST /api/fichas_tecnicas
+                const response = await fetch(`${API_URL}/fichas_tecnicas`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
                 });
-            } catch (error) {
-                console.error('Erro ao carregar produtos:', error);
-            }
-        }
 
-        // Visualizar ficha técnica de um produto
+                if (response.ok) {
+                    alert('✅ Item adicionado à ficha técnica com sucesso!');
+                    document.getElementById('quantidade_necessaria').value = '';
+                    visualizarFichaTecnica(); 
+                } else {
+                    const errorData = await response.json();
+                    alert('❌ Erro ao adicionar item à ficha técnica: ' + (errorData.error || response.statusText));
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('❌ Erro ao conectar com o servidor.');
+            }
+        });
+
+
+        // Visualizar ficha técnica de um produto (Melhorado com formatação de unidades)
         async function visualizarFichaTecnica() {
             const produtoId = document.getElementById('produto_visualizar').value;
+            const tbody = document.getElementById('fichaTableBody');
 
             if (!produtoId) {
-                document.getElementById('fichaTableBody').innerHTML = `
-                    <tr>
-                        <td colspan="3" class="px-4 py-4 text-center text-gray-500">Selecione um produto para visualizar sua ficha técnica</td>
-                    </tr>
-                `;
+                tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-gray-500">Selecione um produto para visualizar sua ficha técnica</td></tr>`;
                 return;
             }
 
-            try {
-                const response = await fetch(`${API_URL}/fichas_tecnicas/${produtoId}`);
-                const fichas = await response.json();
+            tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-blue-500">Carregando itens da ficha técnica...</td></tr>`;
 
-                const tbody = document.getElementById('fichaTableBody');
+
+            try {
+                // Rota corrigida: GET /api/fichas_tecnicas/:produtoId
+                const response = await fetch(`${API_URL}/fichas_tecnicas/${produtoId}`);
+                
+                if (!response.ok) {
+                     throw new Error('Erro ao buscar ficha técnica.');
+                }
+                
+                const fichas = await response.json();
                 tbody.innerHTML = '';
 
                 if (fichas.length === 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="3" class="px-4 py-4 text-center text-gray-500">Nenhuma ficha técnica cadastrada para este produto</td>
-                        </tr>
-                    `;
+                    tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-gray-500">Nenhuma ficha técnica cadastrada para este produto.</td></tr>`;
                     return;
                 }
 
                 fichas.forEach(ficha => {
+                    // Busca a unidade de medida no cache (ou usa a que veio da API)
+                    const insumo = insumosCache.find(i => i.id === ficha.insumo_id);
+                    const unidade = insumo ? insumo.unidade_medida : ficha.unidade_medida || 'UN';
+
                     const tr = document.createElement('tr');
                     tr.className = 'border-b hover:bg-gray-50';
                     tr.innerHTML = `
                         <td class="px-4 py-2">${ficha.insumo_nome}</td>
-                        <td class="px-4 py-2">${ficha.unidade_medida}</td>
-                        <td class="px-4 py-2">${ficha.quantidade_necessaria}</td>
+                        <td class="px-4 py-2 text-gray-500">${unidade}</td>
+                        <td class="px-4 py-2 font-semibold text-gray-800">${formatarQuantidade(ficha.quantidade_necessaria, unidade)}</td>
+                        <td class="px-4 py-2 text-center">
+                            <button onclick="excluirFichaItem(${ficha.id}, '${ficha.insumo_nome}')" class="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 transition">
+                                Excluir
+                            </button>
+                        </td>
                     `;
                     tbody.appendChild(tr);
                 });
             } catch (error) {
                 console.error('Erro ao carregar ficha técnica:', error);
+                tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-red-500">❌ Erro ao carregar dados.</td></tr>`;
             }
         }
+        
+        // NOVO: Excluir item da ficha técnica (DELETE)
+        async function excluirFichaItem(fichaId, insumoNome) {
+            if (!verificarLogin()) return;
+
+            if (!confirm(`Tem certeza que deseja remover o insumo "${insumoNome}" desta ficha técnica?`)) {
+                return;
+            }
+
+            try {
+                // Rota: DELETE /api/fichas_tecnicas/:fichaId
+                const response = await fetch(`${API_URL}/fichas_tecnicas/${fichaId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert(`✅ Item excluído com sucesso!`);
+                    visualizarFichaTecnica();
+                } else {
+                    const errorData = await response.json();
+                    alert('❌ Erro ao excluir item: ' + (errorData.error || response.statusText));
+                }
+            } catch (error) {
+                console.error('Erro ao excluir:', error);
+                alert('❌ Erro ao conectar com o servidor.');
+            }
+        }
+
     </script>
 
-    <!-- Botão de Instalação PWA -->
     <button 
       id="install-button" 
       style="display: none; position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; background: #1e293b; color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: 600;"
     >
       📱 Instalar App
     </button>
-
-    <!-- Registrar Service Worker para PWA -->
+    
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -279,7 +370,6 @@
         });
       }
 
-      // Botão de instalação PWA
       let deferredPrompt;
       window.addEventListener('beforeinstallprompt', (event) => {
         event.preventDefault();

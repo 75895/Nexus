@@ -3,39 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Produtos - Sistema de Gestão de Restaurante</title>
+    <title>Produtos - Sistema de Gestão Nexus</title>
+    <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- PWA Manifest -->
     <link rel="manifest" href="/Nexus/manifest.json">
     <meta name="theme-color" content="#1e293b">
     <link rel="apple-touch-icon" href="/Nexus/imagens/icon-192x192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Nexus">
-    <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Nexus">
 </head>
 <body class="bg-gray-100">
-    <!-- Navbar -->
+    
+    <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">📦 Gestão de Produtos</h1>
+            <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-sm font-semibold transition">
+                Sair
+            </button>
+        </div>
+    </header>
+
     <nav class="bg-white shadow-md">
-        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-gray-800">Gestão de Produtos</h1>
-            <a href="/Nexus/dashboard.html" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
-                Voltar ao Dashboard
-            </a>
-        </div>  
+        <div class="container mx-auto px-4">
+            <ul class="flex gap-6 py-3">
+                <li><a href="/Nexus/dashboard.html" class="text-gray-600 hover:text-blue-600">Dashboard</a></li>
+                <li><a href="/Nexus/pdv.html" class="text-gray-600 hover:text-blue-600">💰 PDV</a></li>
+                <li><a href="/Nexus/mesas.html" class="text-gray-600 hover:text-blue-600">Mesas</a></li>
+                <li><a href="/Nexus/insumos.html" class="text-gray-600 hover:text-blue-600">Estoque</a></li>
+                <li><a href="/Nexus/produtos.html" class="text-blue-600 font-semibold hover:text-blue-800">Produtos</a></li>
+                <li><a href="/Nexus/fichas_tecnicas.html" class="text-gray-600 hover:text-blue-600">Fichas Técnicas</a></li>
+                <li><a href="/Nexus/vendas.html" class="text-gray-600 hover:text-blue-600">Vendas</a></li>
+            </ul>
+        </div>
     </nav>
 
-    <!-- Container Principal -->
+
     <div class="container mx-auto px-6 py-8">
-        <!-- Formulário de Cadastro -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Cadastrar Novo Produto</h2>
-            <form id="produtoForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form id="produtoForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <div>
-                    <label class="block text-gray-600 mb-2">Nome do Produto</label>
+                    <label for="nome" class="block text-gray-600 mb-2">Nome do Produto</label>
                     <input 
                         type="text" 
                         id="nome" 
@@ -45,7 +57,7 @@
                     />
                 </div>
                 <div>
-                    <label class="block text-gray-600 mb-2">Preço de Venda (R$)</label>
+                    <label for="preco_venda" class="block text-gray-600 mb-2">Preço de Venda (R$)</label>
                     <input 
                         type="number" 
                         id="preco_venda" 
@@ -55,10 +67,10 @@
                         required
                     />
                 </div>
-                <div class="md:col-span-2">
+                <div>
                     <button 
                         type="submit" 
-                        class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition"
+                        class="w-full bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition font-semibold"
                     >
                         Cadastrar Produto
                     </button>
@@ -66,21 +78,20 @@
             </form>
         </div>
 
-        <!-- Tabela de Produtos -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Lista de Produtos</h2>
             <div class="overflow-x-auto">
                 <table class="w-full table-auto">
                     <thead>
                         <tr class="bg-gray-200 text-gray-700">
-                            <th class="px-4 py-2 text-left">ID</th>
-                            <th class="px-4 py-2 text-left">Nome</th>
-                            <th class="px-4 py-2 text-left">Preço de Venda</th>
-                            <th class="px-4 py-2 text-left">Ações</th>
+                            <th class="px-4 py-2 text-left w-1/12">ID</th>
+                            <th class="px-4 py-2 text-left w-5/12">Nome</th>
+                            <th class="px-4 py-2 text-left w-2/12">Preço de Venda</th>
+                            <th class="px-4 py-2 text-center w-4/12">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="produtosTableBody">
-                        <!-- Dados serão carregados dinamicamente -->
+                        <tr><td colspan="4" class="text-center py-4 text-gray-500">Carregando produtos...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -88,23 +99,54 @@
     </div>
 
     <script>
-        const API_URL = 'https://nexus-backend-pvj4.onrender.com';
+        // CORREÇÃO CRÍTICA: Padronização da URL com o prefixo /api
+        const API_URL = 'https://nexus-backend-pvj4.onrender.com/api'; 
 
-        // Carregar produtos ao carregar a página
-        document.addEventListener('DOMContentLoaded', function() {
-            carregarProdutos();
-        });
+        // -------------------------
+        // FUNÇÕES GLOBAIS DE SEGURANÇA E UX
+        // -------------------------
+
+        function verificarLogin() {
+            if (!localStorage.getItem('usuario_id')) {
+                alert('Você precisa fazer login para acessar esta página!');
+                window.location.href = '/Nexus/index.html';
+                return false;
+            }
+            return true;
+        }
+
+        function logout() {
+            localStorage.removeItem('usuario_id');
+            localStorage.removeItem('usuario_nome');
+            window.location.href = '/Nexus/index.html';
+        }
+
+        function formatarMoeda(valor) {
+            const numero = parseFloat(valor) || 0;
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(numero);
+        }
+
+        // -------------------------
+        // FUNÇÕES DE PRODUTOS (CRUD)
+        // -------------------------
 
         // Cadastrar novo produto
         document.getElementById('produtoForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
+            if (!verificarLogin()) return;
+
             const data = {
                 nome: document.getElementById('nome').value,
-                preco_venda: parseFloat(document.getElementById('preco_venda').value)
+                // Garantir que é um número e formatado corretamente
+                preco_venda: parseFloat(document.getElementById('preco_venda').value).toFixed(2)
             };
 
             try {
+                // Rota corrigida: POST /api/produtos
                 const response = await fetch(`${API_URL}/produtos`, {
                     method: 'POST',
                     headers: {
@@ -114,42 +156,58 @@
                 });
 
                 if (response.ok) {
-                    alert('Produto cadastrado com sucesso!');
+                    alert('✅ Produto cadastrado com sucesso!');
                     document.getElementById('produtoForm').reset();
-                    carregarProdutos();
+                    carregarProdutos(); // Recarrega a lista
                 } else {
-                    alert('Erro ao cadastrar produto.');
+                    const errorData = await response.json();
+                    alert('❌ Erro ao cadastrar produto: ' + (errorData.error || response.statusText));
                 }
             } catch (error) {
                 console.error('Erro:', error);
-                alert('Erro ao conectar com o servidor.');
+                alert('❌ Erro ao conectar com o servidor. Tente novamente.');
             }
         });
 
         // Carregar lista de produtos
         async function carregarProdutos() {
+            if (!verificarLogin()) return;
+
+            const tbody = document.getElementById('produtosTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-blue-500">Carregando...</td></tr>';
+
             try {
+                // Rota corrigida: GET /api/produtos
                 const response = await fetch(`${API_URL}/produtos`);
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar produtos.');
+                }
+                
                 const produtos = await response.json();
 
-                const tbody = document.getElementById('produtosTableBody');
-                tbody.innerHTML = '';
+                tbody.innerHTML = ''; // Limpa o "Carregando..."
+
+                if (produtos.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">Nenhum produto cadastrado.</td></tr>';
+                    return;
+                }
 
                 produtos.forEach(produto => {
                     const tr = document.createElement('tr');
-                    tr.className = 'border-b hover:bg-gray-50';
+                    tr.className = 'border-b last:border-b-0 hover:bg-gray-50 transition';
                     tr.innerHTML = `
-                        <td class="px-4 py-2">${produto.id}</td>
-                        <td class="px-4 py-2">${produto.nome}</td>
-                        <td class="px-4 py-2">R$ ${produto.preco_venda.toFixed(2)}</td>
-                        <td class="px-4 py-2 flex space-x-2">
-                            <a href="fichas_tecnicas.html?produto_id=${produto.id}" class="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 transition">
+                        <td class="px-4 py-2 text-sm text-gray-500">${produto.id}</td>
+                        <td class="px-4 py-2 font-medium text-gray-800">${produto.nome}</td>
+                        <td class="px-4 py-2 font-semibold text-green-600">${formatarMoeda(produto.preco_venda)}</td>
+                        <td class="px-4 py-2 flex space-x-2 justify-center">
+                            <a href="/Nexus/fichas_tecnicas.html?produto_id=${produto.id}" class="bg-purple-500 text-white px-3 py-1 rounded-md text-sm hover:bg-purple-600 transition">
                                 Ficha Técnica
                             </a>
-                            <button onclick="editarProduto(${produto.id})" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition">
+                            <button onclick="editarProduto(${produto.id})" class="bg-yellow-500 text-white px-3 py-1 rounded-md text-sm hover:bg-yellow-600 transition">
                                 Editar
                             </button>
-                            <button onclick="excluirProduto(${produto.id})" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition">
+                            <button onclick="excluirProduto(${produto.id})" class="bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600 transition">
                                 Excluir
                             </button>
                         </td>
@@ -158,32 +216,33 @@
                 });
             } catch (error) {
                 console.error('Erro ao carregar produtos:', error);
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-red-500">❌ Erro ao carregar dados do servidor.</td></tr>';
             }
         }
 
-        // Editar produto (simplificado)
+        // Editar produto (função global, simplificada com prompt)
         async function editarProduto(id) {
-            const produtos = await (await fetch(`${API_URL}/produtos`)).json();
-            const produtoToEdit = produtos.find(p => p.id === id);
+            if (!verificarLogin()) return;
 
-            if (!produtoToEdit) {
-                alert('Produto não encontrado.');
-                return;
-            }
-
-            const novoNome = prompt('Editar Nome:', produtoToEdit.nome);
-            if (novoNome === null) return;
-
-            const novoPreco = prompt('Editar Preço de Venda:', produtoToEdit.preco_venda);
-            if (novoPreco === null) return;
-
-            const data = {
-                nome: novoNome,
-                preco_venda: parseFloat(novoPreco)
-            };
-
+            // Busca o produto atual para pré-preencher
             try {
-                const response = await fetch(`${API_URL}/produtos/${id}`, {
+                const response = await fetch(`${API_URL}/produtos/${id}`);
+                if (!response.ok) throw new Error('Produto não encontrado.');
+                const produtoToEdit = await response.json();
+
+                const novoNome = prompt('Editar Nome:', produtoToEdit.nome);
+                if (novoNome === null || novoNome.trim() === "") return;
+
+                const novoPreco = prompt('Editar Preço de Venda:', produtoToEdit.preco_venda);
+                if (novoPreco === null || isNaN(parseFloat(novoPreco))) return;
+
+                const data = {
+                    nome: novoNome,
+                    preco_venda: parseFloat(novoPreco).toFixed(2)
+                };
+
+                // Rota corrigida: PUT /api/produtos/:id
+                const updateResponse = await fetch(`${API_URL}/produtos/${id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -191,53 +250,59 @@
                     body: JSON.stringify(data)
                 });
 
-                if (response.ok) {
-                    alert('Produto atualizado com sucesso!');
+                if (updateResponse.ok) {
+                    alert('✅ Produto atualizado com sucesso!');
                     carregarProdutos();
                 } else {
-                    alert('Erro ao atualizar produto.');
+                    const errorData = await updateResponse.json();
+                    alert('❌ Erro ao atualizar produto: ' + (errorData.error || updateResponse.statusText));
                 }
+
             } catch (error) {
-                console.error('Erro:', error);
-                alert('Erro ao conectar com o servidor.');
+                console.error('Erro ao editar produto:', error);
+                alert('❌ Erro ao buscar/atualizar o produto.');
             }
         }
 
-        // Excluir produto
+        // Excluir produto (função global)
         async function excluirProduto(id) {
-            if (!confirm('Tem certeza que deseja excluir este produto?')) {
+            if (!verificarLogin()) return;
+
+            if (!confirm('Tem certeza que deseja excluir este produto? Esta ação é irreversível.')) {
                 return;
             }
 
             try {
+                // Rota corrigida: DELETE /api/produtos/:id
                 const response = await fetch(`${API_URL}/produtos/${id}`, {
                     method: 'DELETE'
                 });
 
-                const result = await response.json();
-
                 if (response.ok) {
-                    alert(result.message);
+                    const result = await response.json();
+                    alert('✅ ' + (result.message || 'Produto excluído com sucesso!'));
                     carregarProdutos();
                 } else {
-                    alert('Erro ao excluir produto: ' + result.error);
+                    const errorData = await response.json();
+                    alert('❌ Erro ao excluir produto: ' + (errorData.error || response.statusText));
                 }
             } catch (error) {
                 console.error('Erro:', error);
-                alert('Erro ao conectar com o servidor.');
+                alert('❌ Erro ao conectar com o servidor.');
             }
         }
+
+        // Inicialização ao carregar a página
+        window.addEventListener('DOMContentLoaded', carregarProdutos);
     </script>
 
-    <!-- Botão de Instalação PWA -->
     <button 
       id="install-button" 
       style="display: none; position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; background: #1e293b; color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: 600;"
     >
       📱 Instalar App
     </button>
-
-    <!-- Registrar Service Worker para PWA -->
+    
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -251,7 +316,6 @@
         });
       }
 
-      // Botão de instalação PWA
       let deferredPrompt;
       window.addEventListener('beforeinstallprompt', (event) => {
         event.preventDefault();

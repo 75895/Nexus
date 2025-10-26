@@ -5,13 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Sistema de Gestão de Restaurante</title>
 
-    <!-- Favicon -->
     <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
 
-    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- PWA Manifest -->
     <link rel="manifest" href="/Nexus/manifest.json">
     <meta name="theme-color" content="#1e293b">
     <link rel="apple-touch-icon" href="/Nexus/imagens/icon-192x192.png">
@@ -67,6 +64,18 @@
     </div>
 
     <script>
+    // URL base da API
+    const API_BASE_URL = 'https://nexus-backend-pvj4.onrender.com';
+
+    // 1. Redirecionar se o usuário já estiver logado
+    function checkLoginStatus() {
+        if (localStorage.getItem('usuario_id')) {
+            window.location.href = '/Nexus/dashboard.html';
+        }
+    }
+    checkLoginStatus();
+
+    // 2. Lógica de Login
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
@@ -79,7 +88,8 @@
         }
         
         try {
-            const response = await fetch('https://nexus-backend-pvj4.onrender.com/login', {
+            // Rota de Login no root da API
+            const response = await fetch(`${API_BASE_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
@@ -87,24 +97,29 @@
             
             const resultado = await response.json();
             
-            if (resultado.success) {
+            if (response.ok && resultado.success) { // Verifica se o status HTTP é 2xx e success é true
                 console.log('Login realizado com sucesso:', resultado);
+                
+                // Armazenamento dos dados do usuário
                 localStorage.setItem('usuario_id', resultado.user.id);
                 localStorage.setItem('usuario_nome', resultado.user.username);
+                
                 alert('Bem-vindo(a), ' + resultado.user.username + '!');
                 window.location.href = '/Nexus/dashboard.html';
+
             } else {
-                alert('❌ ' + resultado.message);
+                // Captura a mensagem de erro do backend (se houver)
+                const errorMessage = resultado.message || 'Credenciais inválidas. Tente novamente.';
+                alert('❌ ' + errorMessage);
                 document.getElementById('password').value = '';
             }
         } catch (erro) {
             console.error('Erro ao fazer login:', erro);
-            alert('❌ Erro ao conectar com o servidor. Verifique se o backend está rodando.');
+            alert('❌ Erro de conexão. Verifique a URL do backend ou o status do servidor.');
         }
     });
     </script>
 
-    <!-- Registro do Service Worker -->
     <script>
     if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("/Nexus/service-worker.js")
@@ -115,4 +130,3 @@
 
 </body>
 </html>
-     
