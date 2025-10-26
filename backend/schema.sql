@@ -1,19 +1,24 @@
 -- ========================================
--- RESET E TABELAS PRINCIPAIS (INALTERADAS)
+-- RESET E TABELAS PRINCIPAIS (ORDEM CORRIGIDA)
 -- ========================================
 
+-- DROP TABLES: Excluir tabelas dependentes ANTES das tabelas principais.
+
+DROP TABLE IF EXISTS ficha_tecnica; 
+DROP TABLE IF EXISTS comanda_itens;
+DROP TABLE IF EXISTS vendas;
+DROP TABLE IF EXISTS comandas;
+DROP TABLE IF EXISTS mesas;
 DROP TABLE IF EXISTS insumos;
 DROP TABLE IF EXISTS produtos;
-DROP TABLE IF EXISTS ficha_tecnica;
-DROP TABLE IF EXISTS comanda_itens; -- NOVA TABELA
-DROP TABLE IF EXISTS comandas;      -- NOVA TABELA
-DROP TABLE IF EXISTS mesas;         -- NOVA TABELA
-DROP TABLE IF EXISTS vendas;        -- TABELA ALTERADA
 DROP TABLE IF EXISTS usuarios;
 
+-- ========================================
+-- CRIAÇÃO DE TABELAS (CORREÇÃO: SERIAL PRIMARY KEY)
+-- ========================================
+
 CREATE TABLE insumos (
-    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
--- ou: id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY, 
     nome TEXT NOT NULL,
     unidade_medida TEXT NOT NULL,
     quantidade_estoque REAL NOT NULL DEFAULT 0,
@@ -23,15 +28,13 @@ CREATE TABLE insumos (
 );
 
 CREATE TABLE produtos (
-    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
--- ou: id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY, 
     nome TEXT NOT NULL,
     preco_venda REAL NOT NULL
 );
 
 CREATE TABLE ficha_tecnica (
-    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
--- ou: id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY, 
     produto_id INTEGER NOT NULL,
     insumo_id INTEGER NOT NULL,
     quantidade_necessaria REAL NOT NULL,
@@ -40,20 +43,18 @@ CREATE TABLE ficha_tecnica (
 );
 
 CREATE TABLE usuarios (
-    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
--- ou: id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY, 
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     data_criacao TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ========================================
--- NOVAS TABELAS PARA PDV/COMANDAS/MESAS
+-- TABELAS PDV/COMANDAS/MESAS
 -- ========================================
 
 CREATE TABLE mesas (
-    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
--- ou: id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY, 
     numero INTEGER NOT NULL UNIQUE,
     capacidade INTEGER NOT NULL,
     localizacao TEXT,
@@ -62,8 +63,7 @@ CREATE TABLE mesas (
 );
 
 CREATE TABLE comandas (
-    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
--- ou: id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY, 
     mesa_id INTEGER NOT NULL,
     data_abertura TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     data_fechamento TEXT,
@@ -74,8 +74,7 @@ CREATE TABLE comandas (
 );
 
 CREATE TABLE comanda_itens (
-    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
--- ou: id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY, 
     comanda_id INTEGER NOT NULL,
     produto_id INTEGER NOT NULL,
     quantidade INTEGER NOT NULL,
@@ -86,13 +85,11 @@ CREATE TABLE comanda_itens (
 );
 
 -- ========================================
--- TABELA VENDAS RESTRUTURADA PARA REGISTRO DE PAGAMENTO FINAL
+-- TABELA VENDAS RESTRUTURADA 
 -- ========================================
--- ATENÇÃO: Esta tabela é onde a rota POST /api/vendas vai inserir o registro final.
 
 CREATE TABLE vendas (
-    id SERIAL PRIMARY KEY, -- Forma padrão para PostgreSQL
--- ou: id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY, 
     
     -- Campos de Pagamento (Nova Estrutura)
     valor_total REAL NOT NULL,
@@ -101,7 +98,7 @@ CREATE TABLE vendas (
     metodo_pagamento TEXT NOT NULL, 
     
     -- Rastreamento da Origem
-    comanda_id INTEGER, -- Permite NULL se for venda PDV rápida sem comanda/mesa
+    comanda_id INTEGER, 
     data_venda TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     observacoes TEXT,
     
