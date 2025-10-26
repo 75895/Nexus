@@ -201,7 +201,7 @@
                 produtos.forEach(produto => {
                     const option = document.createElement('option');
                     option.value = produto.id;
-                    option.textContent = `${produto.nome} - R$ ${produto.preco_venda.toFixed(2)}`;
+                    option.textContent = `${produto.nome} - R$ ${(parseFloat(produto.preco_venda) || 0).toFixed(2)}`;
                     select.appendChild(option);
                 });
             } catch (error) {
@@ -226,7 +226,7 @@
                 // Atualizar informações
                 document.getElementById('mesaNumero').textContent = comandaAtual.mesa_numero;
                 document.getElementById('comandaStatus').textContent = comandaAtual.status.toUpperCase();
-                document.getElementById('comandaTotal').textContent = `R$ ${comandaAtual.total.toFixed(2)}`;
+                document.getElementById('comandaTotal').textContent = `R$ ${(parseFloat(comandaAtual.total) || 0).toFixed(2)}`;
 
                 // Atualizar cor do status
                 const statusElement = document.getElementById('comandaStatus');
@@ -262,8 +262,8 @@
                     tr.innerHTML = `
                         <td class="px-4 py-2">${item.produto_nome}</td>
                         <td class="px-4 py-2 text-center font-semibold">${item.quantidade}</td>
-                        <td class="px-4 py-2 text-right">R$ ${item.preco_unitario.toFixed(2)}</td>
-                        <td class="px-4 py-2 text-right font-semibold">R$ ${item.subtotal.toFixed(2)}</td>
+                        <td class="px-4 py-2 text-right">R$ ${(parseFloat(item.preco_unitario) || 0).toFixed(2)}</td>
+                        <td class="px-4 py-2 text-right font-semibold">R$ ${(parseFloat(item.subtotal) || 0).toFixed(2)}</td>
                         <td class="px-4 py-2 text-sm text-gray-600">${item.observacoes || '-'}</td>
                         <td class="px-4 py-2 text-center">
                             ${isAberta ? `
@@ -313,7 +313,7 @@
                 return;
             }
 
-            if (!confirm(`Finalizar comanda para pagamento de R$ ${comandaAtual.total.toFixed(2)}? Você será redirecionado para o PDV.`)) {
+            if (!confirm(`Finalizar comanda para pagamento de R$ ${(parseFloat(comandaAtual.total) || 0).toFixed(2)}? Você será redirecionado para o PDV.`)) {
                 return;
             }
 
