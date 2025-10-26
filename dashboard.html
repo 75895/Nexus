@@ -8,7 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- PWA Manifest -->
     <link rel="manifest" href="/Nexus/manifest.json">
     <meta name="theme-color" content="#1e293b">
     <link rel="apple-touch-icon" href="/Nexus/imagens/icon-192x192.png">
@@ -21,7 +20,6 @@
 </head>
 <body class="bg-gray-100">
     
-    <!-- Header -->
     <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <h1 class="text-2xl font-bold">📊 Dashboard - Sistema Nexus</h1>
@@ -34,7 +32,6 @@
         </div>
     </header>
 
-    <!-- Navigation -->
     <nav class="bg-white shadow-md">
         <div class="container mx-auto px-4">
             <ul class="flex gap-6 py-3">
@@ -49,24 +46,20 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="container mx-auto px-4 py-8">
         
-        <!-- Cards de Estatísticas -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             
-            <!-- Card: Vendas (30 dias) -->
             <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-500 text-sm font-semibold">Vendas (30 dias)</p>
-                        <p id="stat-vendas" class="text-3xl font-bold text-gray-800">-</p>
+                        <p id="stat-vendas" class="text-3xl font-bold text-gray-800">N/A</p>
                     </div>
                     <div class="text-blue-500 text-4xl">🛒</div>
                 </div>
             </div>
 
-            <!-- Card: Receita (30 dias) -->
             <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
                 <div class="flex items-center justify-between">
                     <div>
@@ -77,18 +70,16 @@
                 </div>
             </div>
 
-            <!-- Card: Total de Produtos -->
             <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-500 text-sm font-semibold">Produtos Cadastrados</p>
-                        <p id="stat-produtos" class="text-3xl font-bold text-gray-800">-</p>
+                        <p id="stat-produtos" class="text-3xl font-bold text-gray-800">N/A</p>
                     </div>
                     <div class="text-purple-500 text-4xl">📦</div>
                 </div>
             </div>
 
-            <!-- Card: Alertas de Estoque -->
             <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
                 <div class="flex items-center justify-between">
                     <div>
@@ -101,16 +92,13 @@
 
         </div>
 
-        <!-- Gráfico e Ranking -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             
-            <!-- Gráfico de Vendas -->
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h2 class="text-xl font-bold text-gray-800 mb-4">📊 Vendas dos Últimos 7 Dias</h2>
                 <canvas id="graficoVendas"></canvas>
             </div>
 
-            <!-- Produtos Mais Vendidos -->
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h2 class="text-xl font-bold text-gray-800 mb-4">🏆 Produtos Mais Vendidos (30 dias)</h2>
                 <div id="ranking-produtos" class="space-y-3">
@@ -120,7 +108,6 @@
 
         </div>
 
-        <!-- Alertas de Estoque Baixo -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-xl font-bold text-gray-800 mb-4">⚠️ Alertas de Estoque Baixo</h2>
             <div id="alertas-estoque">
@@ -131,7 +118,8 @@
     </main>
 
     <script>
-        const API_URL = 'https://nexus-backend-pvj4.onrender.com';
+        // CORREÇÃO CRÍTICA 1: Adiciona o prefixo /api na URL base
+        const API_URL = 'https://nexus-backend-pvj4.onrender.com/api';
         let graficoVendas = null;
 
         // Verifica se o usuário está logado
@@ -155,43 +143,51 @@
 
         // Formatar moeda
         function formatarMoeda(valor) {
+            const numero = parseFloat(valor) || 0;
             return new Intl.NumberFormat('pt-BR', {
                 style: 'currency',
                 currency: 'BRL'
-            }).format(valor);
+            }).format(numero);
         }
 
         // Carregar estatísticas gerais
         async function carregarEstatisticas() {
             try {
-                const response = await fetch(`${API_URL}/dashboard/estatisticas`);
-                const data = await response.json();
-
-                document.getElementById('stat-vendas').textContent = data.vendas_30_dias;
-                document.getElementById('stat-receita').textContent = formatarMoeda(data.receita_30_dias);
-                document.getElementById('stat-produtos').textContent = data.total_produtos;
-                document.getElementById('stat-alertas').textContent = data.alertas_estoque_baixo;
-
-                // Destaca alertas em vermelho se houver
-                if (data.alertas_estoque_baixo > 0) {
-                    document.getElementById('stat-alertas').classList.add('text-red-600');
+                // CORREÇÃO CRÍTICA 2: Rota alterada de /dashboard/estatisticas para /par/estatisticas
+                const response = await fetch(`${API_URL}/par/estatisticas`);
+                
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.status}`);
                 }
+
+                const data = await response.json();
+                
+                // O backend fornecido só retorna 'receita_30_dias'. Atualizamos este campo.
+                document.getElementById('stat-receita').textContent = formatarMoeda(data.receita_30_dias);
+
             } catch (error) {
                 console.error('Erro ao carregar estatísticas:', error);
+                document.getElementById('stat-receita').textContent = 'Erro!';
             }
         }
 
         // Carregar gráfico de vendas
         async function carregarGraficoVendas() {
             try {
-                const response = await fetch(`${API_URL}/dashboard/vendas-por-dia`);
+                // CORREÇÃO CRÍTICA 3: Rota alterada de /dashboard/vendas-por-dia para /vendas/por-dia
+                const response = await fetch(`${API_URL}/vendas/por-dia`);
+                
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.status}`);
+                }
+                
                 const data = await response.json();
 
                 const labels = data.map(v => {
                     const date = new Date(v.dia);
                     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
                 });
-                const valores = data.map(v => v.receita);
+                const valores = data.map(v => v.total); // Backend retorna a chave 'total'
 
                 const ctx = document.getElementById('graficoVendas').getContext('2d');
                 
@@ -241,7 +237,13 @@
         // Carregar produtos mais vendidos
         async function carregarProdutosMaisVendidos() {
             try {
-                const response = await fetch(`${API_URL}/dashboard/produtos-mais-vendidos`);
+                // CORREÇÃO CRÍTICA 4: Rota alterada de /dashboard/produtos-mais-vendidos para /produtos/o-mais-vendidos
+                const response = await fetch(`${API_URL}/produtos/o-mais-vendidos`);
+                
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.status}`);
+                }
+
                 const data = await response.json();
 
                 const container = document.getElementById('ranking-produtos');
@@ -256,11 +258,10 @@
                         <div class="flex items-center gap-3">
                             <span class="text-2xl font-bold text-gray-400">${index + 1}º</span>
                             <div>
-                                <p class="font-semibold text-gray-800">${produto.nome}</p>
+                                <p class="font-semibold text-gray-800">${produto.produto_nome}</p>
                                 <p class="text-sm text-gray-500">${produto.total_vendido} unidades vendidas</p>
                             </div>
                         </div>
-                        <span class="font-bold text-green-600">${formatarMoeda(produto.receita)}</span>
                     </div>
                 `).join('');
             } catch (error) {
@@ -271,11 +272,25 @@
         // Carregar alertas de estoque baixo
         async function carregarAlertasEstoque() {
             try {
-                const response = await fetch(`${API_URL}/dashboard/estoque-baixo`);
+                // CORREÇÃO CRÍTICA 5: Rota alterada de /dashboard/estoque-baixo para /insumos/estoque-baixo
+                const response = await fetch(`${API_URL}/insumos/estoque-baixo`);
+                
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.status}`);
+                }
+
                 const data = await response.json();
 
                 const container = document.getElementById('alertas-estoque');
                 
+                // Atualiza o card de Alertas de Estoque com a contagem de itens
+                document.getElementById('stat-alertas').textContent = data.length.toString();
+                if (data.length > 0) {
+                    document.getElementById('stat-alertas').classList.add('text-red-600');
+                } else {
+                    document.getElementById('stat-alertas').classList.remove('text-red-600');
+                }
+
                 if (data.length === 0) {
                     container.innerHTML = '<p class="text-green-600 text-center font-semibold">✅ Todos os insumos estão com estoque adequado!</p>';
                     return;
@@ -288,6 +303,7 @@
                                 <tr>
                                     <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Insumo</th>
                                     <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Estoque Atual</th>
+                                    <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Estoque Mínimo</th>
                                     <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Unidade</th>
                                     <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Status</th>
                                 </tr>
@@ -297,10 +313,11 @@
                                     <tr class="border-b hover:bg-gray-50">
                                         <td class="px-4 py-3 font-semibold">${insumo.nome}</td>
                                         <td class="px-4 py-3 text-red-600 font-bold">${insumo.estoque_atual}</td>
+                                        <td class="px-4 py-3 text-red-600 font-bold">${insumo.estoque_minimo}</td>
                                         <td class="px-4 py-3 text-gray-600">${insumo.unidade_medida}</td>
                                         <td class="px-4 py-3">
                                             <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">
-                                                ${insumo.estoque_atual < 5 ? '🔴 Crítico' : '⚠️ Baixo'}
+                                                🔴 Crítico
                                             </span>
                                         </td>
                                     </tr>
@@ -311,6 +328,7 @@
                 `;
             } catch (error) {
                 console.error('Erro ao carregar alertas de estoque:', error);
+                document.getElementById('stat-alertas').textContent = 'Erro!';
             }
         }
 
@@ -318,10 +336,13 @@
         async function inicializar() {
             if (!verificarLogin()) return;
 
+            // Carregamos alertas primeiro, pois eles preenchem o card 'stat-alertas'
+            await carregarAlertasEstoque();
+            
+            // Carregamento das demais estatísticas
             await carregarEstatisticas();
             await carregarGraficoVendas();
             await carregarProdutosMaisVendidos();
-            await carregarAlertasEstoque();
         }
 
         // Executar ao carregar a página
@@ -329,7 +350,6 @@
     </script>
 
 
-    <!-- Botão de Instalação PWA -->
     <button 
       id="install-button" 
       style="display: none; position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; background: #1e293b; color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: 600;"
@@ -337,7 +357,6 @@
       📱 Instalar App
     </button>
 
-    <!-- Registrar Service Worker para PWA -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
