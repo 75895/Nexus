@@ -14,11 +14,12 @@ app = Flask(__name__)
 # ========================================
 CORS(app, resources={
     r"/*": {
-        "origins": "https://75895.github.io",
+        "origins": ["*", "https://75895.github.io"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type"]
     }
 })
+
 
 DATABASE = 'restaurante.db'
 
