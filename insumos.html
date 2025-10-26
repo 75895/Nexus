@@ -6,7 +6,6 @@
     <title>Insumos - Sistema de Gestão de Restaurante</title>
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- PWA Manifest -->
     <link rel="manifest" href="/Nexus/manifest.json">
     <meta name="theme-color" content="#1e293b">
     <link rel="apple-touch-icon" href="/Nexus/imagens/icon-192x192.png">
@@ -18,7 +17,6 @@
     <meta name="application-name" content="Nexus">
 </head>
 <body class="bg-gray-100">
-    <!-- Navbar -->
     <nav class="bg-white shadow-md">
         <div class="container mx-auto px-6 py-4 flex justify-between items-center">
             <h1 class="text-2xl font-bold text-gray-800">Gestão de Insumos</h1>
@@ -28,9 +26,7 @@
         </div>
     </nav>
 
-    <!-- Container Principal -->
     <div class="container mx-auto px-6 py-8">
-        <!-- Formulário de Cadastro -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Cadastrar Novo Insumo</h2>
             <form id="insumoForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -76,11 +72,9 @@
             </form>
         </div>
 
-        <!-- Tabela de Insumos -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Lista de Insumos</h2>
 
-            <!-- Campo de busca -->
             <div class="mb-4 flex justify-between items-center">
                 <input 
                     type="text" 
@@ -102,14 +96,13 @@
                         </tr>
                     </thead>
                     <tbody id="insumosTableBody">
-                        <!-- Dados serão carregados dinamicamente -->
+                        <tr class="text-center"><td colspan="5" class="py-4 text-gray-500">Carregando insumos...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Edição -->
     <div id="editModal" class="hidden fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div class="bg-white p-6 rounded-lg shadow-lg w-96">
         <h2 class="text-xl font-semibold mb-4 text-gray-700">Editar Insumo</h2>
@@ -139,53 +132,36 @@
     </div>
 
     <script>
-        const API_URL = 'https://nexus-backend-pvj4.onrender.com';
+        // CORREÇÃO CRÍTICA 1: Adiciona o prefixo /api na URL base.
+        // O endpoint de insumos está em /api/insumos, então adicionamos /api aqui
+        const API_URL = 'https://nexus-backend-pvj4.onrender.com/api'; 
+        let cachedInsumos = []; // Armazena insumos em cache para a função editarInsumo
 
-        // Carregar insumos ao carregar a página
-        document.addEventListener('DOMContentLoaded', function() {
-            carregarInsumos();
-        });
-
-        // Cadastrar novo insumo
-        document.getElementById('insumoForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const data = {
-                nome: document.getElementById('nome').value,
-                unidade_medida: document.getElementById('unidade_medida').value,
-                estoque_atual: parseFloat(document.getElementById('estoque_atual').value)
-            };
-
-            try {
-                const response = await fetch(`${API_URL}/api/insumos`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                if (response.ok) {
-                    alert('✅ Insumo cadastrado com sucesso!');
-                    document.getElementById('insumoForm').reset();
-                    carregarInsumos();
-                } else {
-                    alert('❌ Erro ao cadastrar insumo.');
-                }
-            } catch (error) {
-                console.error('Erro:', error);
-                alert('⚠️ Erro ao conectar com o servidor.');
-            }
-        });
+        // ===================================
+        // FUNÇÕES CRUD
+        // ===================================
 
         // Carregar lista de insumos
         async function carregarInsumos() {
+            const tbody = document.getElementById('insumosTableBody');
+            tbody.innerHTML = '<tr class="text-center"><td colspan="5" class="py-4 text-gray-500">Carregando insumos...</td></tr>';
             try {
-                const response = await fetch(`${API_URL}/api/insumos`);
+                // Rota Corrigida: Usando a variável API_URL que já inclui /api
+                const response = await fetch(`${API_URL}/insumos`);
+                
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.statusText}`);
+                }
+                
                 const insumos = await response.json();
+                cachedInsumos = insumos; // Cache dos dados
 
-                const tbody = document.getElementById('insumosTableBody');
-                tbody.innerHTML = '';
+                tbody.innerHTML = ''; // Limpa o "Carregando"
+                
+                if (insumos.length === 0) {
+                    tbody.innerHTML = '<tr class="text-center"><td colspan="5" class="py-4 text-gray-500">Nenhum insumo cadastrado.</td></tr>';
+                    return;
+                }
 
                 insumos.forEach(insumo => {
                     const tr = document.createElement('tr');
@@ -208,21 +184,73 @@
                 });
             } catch (error) {
                 console.error('Erro ao carregar insumos:', error);
+                tbody.innerHTML = `<tr class="text-center"><td colspan="5" class="py-4 text-red-500">❌ Erro ao carregar insumos: ${error.message}</td></tr>`;
             }
         }
 
-        // Filtro de busca em tempo real
-        document.getElementById('searchInput').addEventListener('input', function() {
-            const termo = this.value.toLowerCase();
-            const linhas = document.querySelectorAll('#insumosTableBody tr');
+        // Cadastrar novo insumo
+        document.getElementById('insumoForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
 
-            linhas.forEach(linha => {
-                const nome = linha.children[1].textContent.toLowerCase();
-                linha.style.display = nome.includes(termo) ? '' : 'none';
-            });
+            const data = {
+                nome: document.getElementById('nome').value,
+                unidade_medida: document.getElementById('unidade_medida').value,
+                estoque_atual: parseFloat(document.getElementById('estoque_atual').value)
+            };
+
+            try {
+                // Rota Corrigida: Usando a variável API_URL que já inclui /api
+                const response = await fetch(`${API_URL}/insumos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('✅ Insumo cadastrado com sucesso!');
+                    document.getElementById('insumoForm').reset();
+                    carregarInsumos();
+                } else {
+                    const errorData = await response.json();
+                    alert(`❌ Erro ao cadastrar insumo: ${errorData.error || 'Detalhes desconhecidos.'}`);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('⚠️ Erro ao conectar com o servidor.');
+            }
         });
+        
+        // Excluir insumo
+        async function excluirInsumo(id) {
+            if (!confirm('Tem certeza que deseja excluir este insumo?')) return;
 
-        // Modal de edição
+            try {
+                // Rota Corrigida: Usando a variável API_URL que já inclui /api
+                const response = await fetch(`${API_URL}/insumos/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                    carregarInsumos();
+                } else {
+                    alert('Erro ao excluir insumo: ' + (result.error || 'Detalhes desconhecidos.'));
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('⚠️ Erro ao conectar com o servidor.');
+            }
+        }
+
+        // ===================================
+        // FUNÇÕES DE EDIÇÃO E FILTRO
+        // ===================================
+
+        // Abre o modal de edição e preenche os campos
         function abrirModalEdicao(insumo) {
             const modal = document.getElementById('editModal');
             document.getElementById('editId').value = insumo.id;
@@ -232,16 +260,19 @@
             modal.classList.remove('hidden');
         }
 
+        // Fecha o modal de edição
         function fecharModalEdicao() {
             document.getElementById('editModal').classList.add('hidden');
         }
 
-        async function editarInsumo(id) {
-            const insumos = await (await fetch(`${API_URL}/api/insumos`)).json();
-            const insumoToEdit = insumos.find(i => i.id === id);
+        // Busca o insumo no cache e abre o modal
+        function editarInsumo(id) {
+            // Usa o cache local para evitar uma nova requisição GET desnecessária
+            const insumoToEdit = cachedInsumos.find(i => i.id === id);
 
             if (!insumoToEdit) {
-                alert('Insumo não encontrado.');
+                alert('Insumo não encontrado no cache. Tentando recarregar...');
+                carregarInsumos(); // Recarrega a lista
                 return;
             }
             abrirModalEdicao(insumoToEdit);
@@ -257,7 +288,8 @@
             };
 
             try {
-                const response = await fetch(`${API_URL}/api/insumos/${id}`, {
+                // Rota Corrigida: Usando a variável API_URL que já inclui /api
+                const response = await fetch(`${API_URL}/insumos/${id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -270,7 +302,8 @@
                     fecharModalEdicao();
                     carregarInsumos();
                 } else {
-                    alert('❌ Erro ao atualizar insumo.');
+                    const errorData = await response.json();
+                    alert(`❌ Erro ao atualizar insumo: ${errorData.error || 'Detalhes desconhecidos.'}`);
                 }
             } catch (error) {
                 console.error('Erro:', error);
@@ -278,71 +311,64 @@
             }
         }
 
-        // Excluir insumo
-        async function excluirInsumo(id) {
-            if (!confirm('Tem certeza que deseja excluir este insumo?')) return;
+        // Filtro de busca em tempo real
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const termo = this.value.toLowerCase();
+            const linhas = document.querySelectorAll('#insumosTableBody tr');
 
-            try {
-                const response = await fetch(`${API_URL}/api/insumos/${id}`, {
-                    method: 'DELETE'
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    alert(result.message);
-                    carregarInsumos();
-                } else {
-                    alert('Erro ao excluir insumo: ' + result.error);
+            linhas.forEach(linha => {
+                // A linha de carregamento/erro não tem 5 filhos (células)
+                if (linha.children.length > 1) { 
+                    const nome = linha.children[1].textContent.toLowerCase();
+                    linha.style.display = nome.includes(termo) ? '' : 'none';
                 }
-            } catch (error) {
-                console.error('Erro:', error);
-                alert('⚠️ Erro ao conectar com o servidor.');
-            }
+            });
+        });
+
+        // ===================================
+        // INICIALIZAÇÃO
+        // ===================================
+        document.addEventListener('DOMContentLoaded', carregarInsumos);
+        
+        // PWA (Mantido como estava)
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/Nexus/service-worker.js')
+              .then(registration => {
+                console.log('✅ Service Worker registrado com sucesso:', registration.scope);
+              })
+              .catch(error => {
+                console.error('❌ Erro ao registrar Service Worker:', error);
+              });
+          });
         }
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (event) => {
+          event.preventDefault();
+          deferredPrompt = event;
+          const installButton = document.getElementById('install-button');
+          if (installButton) {
+            installButton.style.display = 'block';
+            installButton.addEventListener('click', () => {
+              installButton.style.display = 'none';
+              deferredPrompt.prompt();
+              deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                  console.log('✅ App instalado');
+                }
+                deferredPrompt = null;
+              });
+            });
+          }
+        });
     </script>
 
-    <!-- Botão de Instalação PWA -->
     <button 
       id="install-button" 
       style="display: none; position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; background: #1e293b; color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: 600;"
     >
       📱 Instalar App
     </button>
-
-    <!-- Registrar Service Worker para PWA -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/Nexus/service-worker.js')
-            .then(registration => {
-              console.log('✅ Service Worker registrado com sucesso:', registration.scope);
-            })
-            .catch(error => {
-              console.error('❌ Erro ao registrar Service Worker:', error);
-            });
-        });
-      }
-
-      let deferredPrompt;
-      window.addEventListener('beforeinstallprompt', (event) => {
-        event.preventDefault();
-        deferredPrompt = event;
-        const installButton = document.getElementById('install-button');
-        if (installButton) {
-          installButton.style.display = 'block';
-          installButton.addEventListener('click', () => {
-            installButton.style.display = 'none';
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((choiceResult) => {
-              if (choiceResult.outcome === 'accepted') {
-                console.log('✅ App instalado');
-              }
-              deferredPrompt = null;
-            });
-          });
-        }
-      });
-    </script>
 </body>
 </html>

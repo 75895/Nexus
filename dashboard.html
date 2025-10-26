@@ -54,7 +54,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-500 text-sm font-semibold">Vendas (30 dias)</p>
-                        <p id="stat-vendas" class="text-3xl font-bold text-gray-800">N/A</p>
+                        <p id="stat-vendas" class="text-3xl font-bold text-gray-800">0</p>
                     </div>
                     <div class="text-blue-500 text-4xl">🛒</div>
                 </div>
@@ -64,7 +64,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-500 text-sm font-semibold">Receita (30 dias)</p>
-                        <p id="stat-receita" class="text-3xl font-bold text-gray-800">-</p>
+                        <p id="stat-receita" class="text-3xl font-bold text-gray-800">R$ 0,00</p>
                     </div>
                     <div class="text-green-500 text-4xl">💰</div>
                 </div>
@@ -80,11 +80,11 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
+            <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500 card-alertas">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-500 text-sm font-semibold">Alertas de Estoque</p>
-                        <p id="stat-alertas" class="text-3xl font-bold text-gray-800">-</p>
+                        <p id="stat-alertas" class="text-3xl font-bold text-gray-800">0</p>
                     </div>
                     <div class="text-red-500 text-4xl">⚠️</div>
                 </div>
@@ -101,7 +101,7 @@
 
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h2 class="text-xl font-bold text-gray-800 mb-4">🏆 Produtos Mais Vendidos (30 dias)</h2>
-                <div id="ranking-produtos" class="space-y-3">
+                <div id="lista-produtos-vendidos" class="space-y-3">
                     <p class="text-gray-500 text-center">Carregando...</p>
                 </div>
             </div>
@@ -110,27 +110,27 @@
 
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-xl font-bold text-gray-800 mb-4">⚠️ Alertas de Estoque Baixo</h2>
-            <div id="alertas-estoque">
+            <ul id="lista-alertas" class="space-y-2 list-disc list-inside">
                 <p class="text-gray-500 text-center">Carregando...</p>
-            </div>
+            </ul>
         </div>
 
     </main>
 
     <script>
-        // CORREÇÃO CRÍTICA 1: Adiciona o prefixo /api na URL base
-        const API_URL = 'https://nexus-backend-pvj4.onrender.com/api';
+        // CORREÇÃO CRÍTICA: Adiciona o prefixo /api na URL base para todas as chamadas
+        const API_URL = 'https://nexus-backend-pvj4.onrender.com/api'; 
         let graficoVendas = null;
 
         // Verifica se o usuário está logado
-        function verificarLogin( ) {
+        function verificarLogin() {
             const usuarioNome = localStorage.getItem('usuario_nome');
             if (!usuarioNome) {
                 alert('Você precisa fazer login primeiro!');
                 window.location.href = '/Nexus/index.html';
                 return false;
             }
-            document.getElementById('usuario-nome').textContent = `Olá, ${usuarioNome}!`;
+            document.getElementById('usuario-nome').textContent = `Olá, ${usuarioNome}!`; 
             return true;
         }
 
@@ -150,11 +150,35 @@
             }).format(numero);
         }
 
+        // ===================================
+        // FUNÇÕES DE ESTATÍSTICAS
+        // ===================================
+
+        // Carregar Total de Produtos
+        async function carregarTotalProdutos() {
+            try {
+                // Rota corrigida: /produtos/total
+                const response = await fetch(`${API_URL}/produtos/total`); 
+                
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                document.getElementById('stat-produtos').textContent = data.total_produtos || '0'; 
+
+            } catch (error) {
+                console.error('Erro ao carregar total de produtos:', error);
+                document.getElementById('stat-produtos').textContent = 'Erro!';
+            }
+        }
+
+
         // Carregar estatísticas gerais
         async function carregarEstatisticas() {
             try {
-                // CORREÇÃO CRÍTICA 2: Rota alterada de /dashboard/estatisticas para /par/estatisticas
-                const response = await fetch(`${API_URL}/par/estatisticas`);
+                // Rota corrigida: /par/estatisticas
+                const response = await fetch(`${API_URL}/par/estatisticas`); 
                 
                 if (!response.ok) {
                     throw new Error(`Erro de rede: ${response.status}`);
@@ -162,7 +186,7 @@
 
                 const data = await response.json();
                 
-                // O backend fornecido só retorna 'receita_30_dias'. Atualizamos este campo.
+                // Atualiza a Receita
                 document.getElementById('stat-receita').textContent = formatarMoeda(data.receita_30_dias);
 
             } catch (error) {
@@ -173,24 +197,24 @@
 
         // Carregar gráfico de vendas
         async function carregarGraficoVendas() {
+            const ctx = document.getElementById('graficoVendas').getContext('2d');
             try {
-                // CORREÇÃO CRÍTICA 3: Rota alterada de /dashboard/vendas-por-dia para /vendas/por-dia
-                const response = await fetch(`${API_URL}/vendas/por-dia`);
+                // Rota corrigida: /vendas/por-dia
+                const response = await fetch(`${API_URL}/vendas/por-dia`); 
                 
                 if (!response.ok) {
-                    throw new Error(`Erro de rede: ${response.status}`);
+                    throw new Error(`Erro de rede: ${response.statusText}`);
                 }
                 
                 const data = await response.json();
 
                 const labels = data.map(v => {
                     const date = new Date(v.dia);
-                    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    // Formato DD/MM
+                    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }); 
                 });
                 const valores = data.map(v => v.total); // Backend retorna a chave 'total'
 
-                const ctx = document.getElementById('graficoVendas').getContext('2d');
-                
                 if (graficoVendas) {
                     graficoVendas.destroy();
                 }
@@ -222,7 +246,7 @@
                                 beginAtZero: true,
                                 ticks: {
                                     callback: function(value) {
-                                        return 'R$ ' + value.toFixed(2);
+                                        return formatarMoeda(value); // Usando a função formatarMoeda
                                     }
                                 }
                             }
@@ -231,32 +255,37 @@
                 });
             } catch (error) {
                 console.error('Erro ao carregar gráfico:', error);
+                ctx.canvas.parentNode.innerHTML = '<p class="text-red-500 text-center">❌ Erro ao carregar dados do gráfico.</p>';
             }
         }
 
         // Carregar produtos mais vendidos
         async function carregarProdutosMaisVendidos() {
             try {
-                // CORREÇÃO CRÍTICA 4: Rota alterada de /dashboard/produtos-mais-vendidos para /produtos/o-mais-vendidos
-                const response = await fetch(`${API_URL}/produtos/o-mais-vendidos`);
+                // Rota corrigida: /produtos/o-mais-vendidos
+                const response = await fetch(`${API_URL}/produtos/o-mais-vendidos`); 
                 
                 if (!response.ok) {
-                    throw new Error(`Erro de rede: ${response.status}`);
+                    throw new Error(`Erro de rede: ${response.statusText}`);
                 }
 
                 const data = await response.json();
 
-                const container = document.getElementById('ranking-produtos');
+                const container = document.getElementById('lista-produtos-vendidos'); 
                 
                 if (data.length === 0) {
                     container.innerHTML = '<p class="text-gray-500 text-center">Nenhuma venda registrada nos últimos 30 dias.</p>';
+                    document.getElementById('stat-vendas').textContent = '0';
                     return;
                 }
+
+                // Soma o total de produtos vendidos para o card de estatísticas
+                document.getElementById('stat-vendas').textContent = data.reduce((acc, produto) => acc + produto.total_vendido, 0);
 
                 container.innerHTML = data.map((produto, index) => `
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
                         <div class="flex items-center gap-3">
-                            <span class="text-2xl font-bold text-gray-400">${index + 1}º</span>
+                            <span class="text-2xl font-bold ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-amber-700' : 'text-gray-400'}">${index + 1}º</span>
                             <div>
                                 <p class="font-semibold text-gray-800">${produto.produto_nome}</p>
                                 <p class="text-sm text-gray-500">${produto.total_vendido} unidades vendidas</p>
@@ -266,29 +295,34 @@
                 `).join('');
             } catch (error) {
                 console.error('Erro ao carregar produtos mais vendidos:', error);
+                document.getElementById('lista-produtos-vendidos').innerHTML = '<p class="text-red-500 text-center">❌ Erro ao carregar ranking de produtos.</p>';
             }
         }
 
         // Carregar alertas de estoque baixo
         async function carregarAlertasEstoque() {
             try {
-                // CORREÇÃO CRÍTICA 5: Rota alterada de /dashboard/estoque-baixo para /insumos/estoque-baixo
-                const response = await fetch(`${API_URL}/insumos/estoque-baixo`);
+                // Rota corrigida: /insumos/estoque-baixo
+                const response = await fetch(`${API_URL}/insumos/estoque-baixo`); 
                 
                 if (!response.ok) {
-                    throw new Error(`Erro de rede: ${response.status}`);
+                    throw new Error(`Erro de rede: ${response.statusText}`);
                 }
 
                 const data = await response.json();
 
-                const container = document.getElementById('alertas-estoque');
+                const container = document.getElementById('lista-alertas'); 
                 
                 // Atualiza o card de Alertas de Estoque com a contagem de itens
                 document.getElementById('stat-alertas').textContent = data.length.toString();
+                const cardAlertas = document.querySelector('.card-alertas');
+
                 if (data.length > 0) {
                     document.getElementById('stat-alertas').classList.add('text-red-600');
+                    cardAlertas.classList.add('border-l-4', 'border-red-500'); 
                 } else {
                     document.getElementById('stat-alertas').classList.remove('text-red-600');
+                    cardAlertas.classList.remove('border-l-4', 'border-red-500'); 
                 }
 
                 if (data.length === 0) {
@@ -296,39 +330,17 @@
                     return;
                 }
 
-                container.innerHTML = `
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead class="bg-red-50">
-                                <tr>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Insumo</th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Estoque Atual</th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Estoque Mínimo</th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Unidade</th>
-                                    <th class="px-4 py-2 text-left text-sm font-semibold text-red-800">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.map(insumo => `
-                                    <tr class="border-b hover:bg-gray-50">
-                                        <td class="px-4 py-3 font-semibold">${insumo.nome}</td>
-                                        <td class="px-4 py-3 text-red-600 font-bold">${insumo.estoque_atual}</td>
-                                        <td class="px-4 py-3 text-red-600 font-bold">${insumo.estoque_minimo}</td>
-                                        <td class="px-4 py-3 text-gray-600">${insumo.unidade_medida}</td>
-                                        <td class="px-4 py-3">
-                                            <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">
-                                                🔴 Crítico
-                                            </span>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
+                container.innerHTML = data.map(insumo => `
+                    <li class="p-2 border-b last:border-b-0 flex justify-between items-center text-red-700 bg-red-50 rounded-md">
+                        <span class="font-semibold">${insumo.nome}</span> 
+                        <span class="text-sm">Estoque: <strong class="text-base">${insumo.estoque_atual} ${insumo.unidade_medida}</strong></span>
+                    </li>
+                `).join('');
+                
             } catch (error) {
                 console.error('Erro ao carregar alertas de estoque:', error);
                 document.getElementById('stat-alertas').textContent = 'Erro!';
+                document.getElementById('lista-alertas').innerHTML = '<p class="text-red-500 text-center">❌ Não foi possível carregar alertas de estoque.</p>';
             }
         }
 
@@ -336,13 +348,14 @@
         async function inicializar() {
             if (!verificarLogin()) return;
 
-            // Carregamos alertas primeiro, pois eles preenchem o card 'stat-alertas'
-            await carregarAlertasEstoque();
-            
-            // Carregamento das demais estatísticas
-            await carregarEstatisticas();
-            await carregarGraficoVendas();
-            await carregarProdutosMaisVendidos();
+            // Carrega todos em paralelo
+            await Promise.all([
+                carregarTotalProdutos(), 
+                carregarAlertasEstoque(),
+                carregarEstatisticas(),
+                carregarGraficoVendas(),
+                carregarProdutosMaisVendidos()
+            ]);
         }
 
         // Executar ao carregar a página
