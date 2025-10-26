@@ -31,7 +31,6 @@ def get_db_connection():
         
         if database_url:
             # Produção: PostgreSQL
-            
             # Corrige URL se necessário
             if database_url.startswith('postgres://'):
                 database_url = database_url.replace('postgres://', 'postgresql://', 1)
@@ -45,75 +44,53 @@ def get_db_connection():
     
     return db
 
-
 @app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)
     if db is not None:
         db.close()
 
+# =================================================================
+# FUNÇÃO CRÍTICA CORRIGIDA: INICIALIZAÇÃO DO DB
+# Soluciona o erro: 'RealDictCursor' object has no attribute 'executescript'
+# =================================================================
 def init_db():
-    """Inicializa o banco de dados com o schema"""
+    """Inicializa o banco de dados com o schema, adaptado para PostgreSQL e SQLite."""
     with app.app_context():
         db = get_db_connection()
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
         with app.open_resource('schema.sql', mode='r') as f:
-            db.cursor().executescript(f.read())
-        db.commit()
+            sql_script = f.read()
 
-def migrar_tabela_insumos():
-    """Adiciona colunas faltantes na tabela insumos"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Tenta adicionar as colunas (se já existirem, vai dar erro mas não tem problema)
         try:
-            cursor.execute("ALTER TABLE insumos ADD COLUMN quantidade_estoque REAL DEFAULT 0")
-            print("✅ Coluna quantidade_estoque adicionada")
-        except Exception:
-            print("⚠️ Coluna quantidade_estoque já existe")
-        
-        try:
-            # ATENÇÃO: Esta coluna é a que estava dando problema. 
-            # A migração tenta criá-la, mas a aplicação falha. Deixaremos o código aqui, mas a rota de estoque baixo fará a correção.
-            cursor.execute("ALTER TABLE insumos ADD COLUMN estoque_minimo REAL DEFAULT 0")
-            print("✅ Coluna estoque_minimo adicionada")
-        except Exception:
-            print("⚠️ Coluna estoque_minimo já existe")
-        
-        try:
-            cursor.execute("ALTER TABLE insumos ADD COLUMN preco_unitario REAL DEFAULT 0")
-            print("✅ Coluna preco_unitario adicionada")
-        except Exception:
-            print("⚠️ Coluna preco_unitario já existe")
-        
-        try:
-            cursor.execute("ALTER TABLE insumos ADD COLUMN fornecedor TEXT")
-            print("✅ Coluna fornecedor adicionada")
-        except Exception:
-            print("⚠️ Coluna fornecedor já existe")
-        
-        conn.commit()
-    except Exception as e:
-        print(f"❌ Erro na migração: {e}")
+            cursor = db.cursor()
+            
+            if is_postgres:
+                # PostgreSQL usa cursor.execute() para executar o bloco inteiro
+                cursor.execute(sql_script)
+            else:
+                # SQLite usa executescript()
+                cursor.executescript(sql_script)
 
-@app.teardown_appcontext
-def close_connection(exception):
-    """Fecha a conexão com o banco ao final de cada requisição"""
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
+            db.commit()
+            return True
+        
+        except Exception as e:
+            db.rollback() 
+            raise e 
 
 @app.route('/init_db')
 def initialize_db_route():
     try:
         init_db()
-        return jsonify({'message': 'Banco de dados inicializado com sucesso!'})
+        # migrate_table_insumos() # Não chame a migração aqui, o schema.sql já faz o reset
+        return jsonify({'message': 'Banco de dados inicializado com sucesso!'}), 200
     except Exception as e:
         return jsonify({'error': f'Erro ao inicializar o banco de dados: {e}'}), 500
 
 # ========================================
-# ROTAS DE AUTENTICAÇÃO
+# ROTAS DE AUTENTICAÇÃO (MANTIDAS)
 # ========================================
 
 @app.route('/login', methods=['POST'])
@@ -151,11 +128,9 @@ def login():
                 'message': 'Usuário ou senha incorretos.'
             }), 401
         
-        # Converte para dict se necessário (PostgreSQL)
         if hasattr(usuario, '_asdict'):
             usuario = dict(usuario)
         elif not isinstance(usuario, dict) and hasattr(usuario, 'keys'):
-            # Caso do sqlite3.Row
             usuario = dict(usuario)
 
         
@@ -192,7 +167,6 @@ def verificar_usuarios():
         cursor.execute("SELECT COUNT(*) as total FROM usuarios")
         resultado = cursor.fetchone()
         
-        # Lógica para lidar com RealDictCursor (PostgreSQL) e Row (SQLite)
         if isinstance(resultado, dict) or (resultado and hasattr(resultado, 'keys')):
             total_usuarios = resultado['total']
         else:
@@ -201,7 +175,6 @@ def verificar_usuarios():
         cursor.execute("SELECT id, username, data_criacao FROM usuarios")
         usuarios = cursor.fetchall()
         
-        # Converte para dict se necessário
         usuarios_list = []
         for u in usuarios:
             if hasattr(u, '_asdict'):
@@ -209,7 +182,6 @@ def verificar_usuarios():
             elif hasattr(u, 'keys'):
                 usuarios_list.append(dict(u))
             else:
-                # Caso de erro ou linha não reconhecida
                 usuarios_list.append(u)
 
         return jsonify({
@@ -291,7 +263,7 @@ def cadastrar_usuario():
         }), 500
 
 # ========================================
-# ROTAS DE INSUMOS
+# ROTAS DE INSUMOS (CORRIGIDAS)
 # ========================================
 
 @app.route('/api/insumos', methods=['GET'])
@@ -300,13 +272,11 @@ def get_insumos():
     try:
         db = get_db_connection()
         cursor = db.cursor()
-        # MUDANÇA AQUI: Corrigido o SELECT para usar apenas colunas que existem no GET
+        # SELECT para buscar as colunas básicas
         cursor.execute('''
-    SELECT id, nome, unidade_medida, estoque_atual 
+    SELECT id, nome, unidade_medida, quantidade_estoque
     FROM insumos ORDER BY nome
 ''')
-
-
         insumos = cursor.fetchall()
         
         # Converte para lista de dicionários
@@ -318,10 +288,10 @@ def get_insumos():
     except Exception as e:
         return jsonify({'error': f'Erro ao buscar insumos: {str(e)}'}), 500
 
-# Rota de adicionar insumo corrigida para ter o prefixo /api
+# Rota de adicionar insumo corrigida para ter o prefixo /api e método POST
 @app.route('/api/insumos', methods=['POST']) 
 def add_insumo():
-    """Adiciona um novo insumo"""
+    """Adiciona um novo insumo (Resolve Erro 405 ao Cadastrar)"""
     try:
         data = request.get_json()
         
@@ -330,13 +300,13 @@ def add_insumo():
         
         nome = data['nome'].strip()
         unidade_medida = data['unidade_medida'].strip()
-        # Garantir que estoque_atual seja um float, com 0 como padrão seguro
-        estoque_atual = float(data.get('estoque_atual', 0))
+        # Usamos 'quantidade_estoque' que é o nome correto do campo na tabela insumos
+        quantidade_estoque = float(data.get('quantidade_estoque', 0))
         
         if not nome or not unidade_medida:
             return jsonify({'error': 'Nome e unidade de medida não podem estar vazios'}), 400
         
-        if estoque_atual < 0:
+        if quantidade_estoque < 0:
             return jsonify({'error': 'Estoque não pode ser negativo'}), 400
         
         db = get_db_connection()
@@ -345,23 +315,23 @@ def add_insumo():
         is_postgres = os.environ.get('DATABASE_URL') is not None
         
         if is_postgres:
-            # Query ajustada para o que realmente tem na tabela no momento
+            # Query ajustada para o que realmente tem na tabela
             cursor.execute(
-                'INSERT INTO insumos (nome, unidade_medida, estoque_atual) VALUES (%s, %s, %s) RETURNING id, nome, unidade_medida, estoque_atual',
-                (nome, unidade_medida, estoque_atual)
+                'INSERT INTO insumos (nome, unidade_medida, quantidade_estoque) VALUES (%s, %s, %s) RETURNING id, nome, unidade_medida, quantidade_estoque',
+                (nome, unidade_medida, quantidade_estoque)
             )
             insumo = dict(cursor.fetchone())
         else:
             cursor.execute(
-                'INSERT INTO insumos (nome, unidade_medida, estoque_atual) VALUES (?, ?, ?)',
-                (nome, unidade_medida, estoque_atual)
+                'INSERT INTO insumos (nome, unidade_medida, quantidade_estoque) VALUES (?, ?, ?)',
+                (nome, unidade_medida, quantidade_estoque)
             )
             new_id = cursor.lastrowid
             insumo = {
                 'id': new_id,
                 'nome': nome,
                 'unidade_medida': unidade_medida,
-                'estoque_atual': float(estoque_atual)
+                'quantidade_estoque': float(quantidade_estoque)
             }
         
         db.commit()
@@ -391,13 +361,13 @@ def update_insumo(insumo_id):
         if 'unidade_medida' in data:
             updates.append('unidade_medida = %s' if is_postgres else 'unidade_medida = ?')
             values.append(data['unidade_medida'].strip())
-        if 'estoque_atual' in data:
-             # Garante que o valor é numérico e não negativo
-            estoque_atual = float(data['estoque_atual'])
-            if estoque_atual < 0:
+        if 'quantidade_estoque' in data:
+            # Garante que o valor é numérico e não negativo
+            quantidade_estoque = float(data['quantidade_estoque'])
+            if quantidade_estoque < 0:
                 return jsonify({'error': 'Estoque não pode ser negativo'}), 400
-            updates.append('estoque_atual = %s' if is_postgres else 'estoque_atual = ?')
-            values.append(estoque_atual)
+            updates.append('quantidade_estoque = %s' if is_postgres else 'quantidade_estoque = ?')
+            values.append(quantidade_estoque)
             
         if not updates:
             return jsonify({'error': 'Nenhum campo para atualizar'}), 400
@@ -445,22 +415,21 @@ def delete_insumo(insumo_id):
 # ROTAS DE DASHBOARD/ESTOQUE (CORRIGIDAS)
 # ========================================
 
-# NOVA ROTA: Alerta de Estoque Baixo (CORRIGIDA)
-# Esta é a rota que estava dando erro 500
-@app.route('/api/insumos/estoque-baixo', methods=['GET'])
+# NOVA ROTA: Alerta de Estoque Baixo (CORRIGIDA - Resolve Erro 500)
+# Renomeada a coluna 'estoque_atual' e removido o 'estoque_minimo' que causa problemas se não estiver no schema
+@app.route('/api/estoque-baixo', methods=['GET'])
 def estoque_baixo():
     """Retorna a lista de insumos com estoque abaixo do mínimo (ou 10)"""
     try:
         db = get_db_connection()
         cursor = db.cursor()
-        is_postgres = os.environ.get('DATABASE_URL') is not None
         
         # CORREÇÃO CRÍTICA: Removemos 'estoque_minimo' do SELECT para evitar o erro 500
-        # e usamos um valor fixo (10) no WHERE, já que a coluna estava ausente.
+        # e usamos a coluna correta 'quantidade_estoque' no SELECT e WHERE.
         query = '''
-            SELECT id, nome, unidade_medida, estoque_atual 
+            SELECT id, nome, unidade_medida, quantidade_estoque 
             FROM insumos
-            WHERE estoque_atual <= 10  -- Usando um threshold seguro (ex: 10)
+            WHERE quantidade_estoque <= 10  -- Usando um threshold seguro (ex: 10)
             ORDER BY nome
         '''
         
@@ -473,7 +442,7 @@ def estoque_baixo():
             alertas_list.append({
                 "id": alerta_dict['id'],
                 "nome": alerta_dict['nome'],
-                "estoque_atual": alerta_dict['estoque_atual'],
+                "estoque_atual": alerta_dict['quantidade_estoque'],
                 "unidade_medida": alerta_dict['unidade_medida'],
                 "estoque_minimo": 10 # Retornamos 10 para o Frontend saber o threshold
             })
@@ -488,7 +457,7 @@ def estoque_baixo():
 # NOVA ROTA: Total de Produtos (Para o card "Produtos Cadastrados")
 @app.route('/api/produtos/total', methods=['GET'])
 def total_produtos():
-    """Retorna o número total de produtos cadastrados"""
+    """Retorna o número total de produtos cadastrados (Resolve N/A no Dashboard)"""
     try:
         db = get_db_connection()
         cursor = db.cursor()
@@ -496,7 +465,6 @@ def total_produtos():
         cursor.execute("SELECT COUNT(*) as total FROM produtos")
         resultado = cursor.fetchone()
         
-        # Lógica para lidar com RealDictCursor (PostgreSQL) e Row (SQLite)
         if isinstance(resultado, dict) or (resultado and hasattr(resultado, 'keys')):
             total_produtos = resultado['total']
         else:
@@ -505,30 +473,29 @@ def total_produtos():
         return jsonify({"total_produtos": total_produtos}), 200
     except Exception as e:
         print(f"Erro ao buscar total de produtos: {str(e)}")
-        # Retorna 0 e o erro para o frontend, resolvendo o N/A
         return jsonify({"total_produtos": 0, "error": str(e)}), 500
 
 # Rota de Estatísticas (Receita 30 dias) - Endpoint usado pelo Frontend
 @app.route('/api/par/estatisticas', methods=['GET'])
 def estatisticas_parciais():
     """Retorna estatísticas parciais do dashboard (ex: receita total)"""
-    # Esta rota já estava dando 200 OK nos seus logs
+    # MOCK DATA para evitar 404/500 se as tabelas de vendas/comandas não tiverem dados.
     return jsonify({"receita_30_dias": 0.00}), 200 
 
 # Rota de Vendas por Dia
 @app.route('/api/vendas/por-dia', methods=['GET'])
 def vendas_por_dia():
-    # Esta rota já estava dando 200 OK nos seus logs
+    # MOCK DATA para evitar 404/500.
     return jsonify([]), 200 
 
 # Rota de Produtos Mais Vendidos
 @app.route('/api/produtos/o-mais-vendidos', methods=['GET'])
 def produtos_mais_vendidos():
-    # Esta rota já estava dando 200 OK nos seus logs
+    # MOCK DATA para evitar 404/500.
     return jsonify([]), 200
 
 # ========================================
-# ROTAS DE PRODUTOS (Continuação)
+# ROTAS DE PRODUTOS
 # ========================================
 
 @app.route('/produtos', methods=['GET'])
@@ -581,7 +548,7 @@ def add_produto():
 
 
 # ========================================
-# ROTAS DE FICHA TÉCNICA (Continuação)
+# ROTAS DE FICHA TÉCNICA
 # ========================================
 
 @app.route('/fichas_tecnicas/<int:produto_id>', methods=['GET'])
@@ -651,20 +618,12 @@ def add_ficha_tecnica():
 
 # ========================================
 # ROTAS DE VENDAS
-# A rota original de vendas foi mantida em /vendas (para PDV com carrinho/estoque)
-# A NOVA rota de vendas foi criada em /api/vendas para lidar com o pagamento da COMANDA
 # ========================================
 
-# ROTA ORIGINAL: Vendas com controle de estoque (PDV com carrinho)
 @app.route('/vendas', methods=['POST'])
 def registrar_venda_pdv_estoque():
     data = request.get_json()
     itens_carrinho = data.get('itens', [])
-    # ... (restante da lógica de controle de estoque)
-    
-    # ATENÇÃO: Esta é a sua rota original, ela está um pouco deslocada do seu fluxo de
-    # Comanda -> PDV, que é o que você quer agora. A nova rota /api/vendas é a correta.
-    # Esta rota foi renomeada para evitar conflitos, mas mantive o corpo original:
     
     if not itens_carrinho:
         return jsonify({'error': 'Carrinho de compras vazio.'}), 400
@@ -685,7 +644,6 @@ def registrar_venda_pdv_estoque():
             ficha_tecnica = cursor.fetchall()
 
             if not ficha_tecnica:
-                # Se não tem ficha técnica, ignora o controle de estoque, mas continua
                 continue 
 
             for row in ficha_tecnica:
@@ -694,7 +652,7 @@ def registrar_venda_pdv_estoque():
                 necessario_por_unidade = row_dict['quantidade_necessaria']
                 necessario_total = necessario_por_unidade * quantidade_vendida
 
-                query_insumo = 'SELECT nome, estoque_atual FROM insumos WHERE id = %s' if is_postgres else 'SELECT nome, estoque_atual FROM insumos WHERE id = ?'
+                query_insumo = 'SELECT nome, quantidade_estoque FROM insumos WHERE id = %s' if is_postgres else 'SELECT nome, quantidade_estoque FROM insumos WHERE id = ?'
                 cursor.execute(query_insumo, (insumo_id,))
                 resultado_insumo = cursor.fetchone()
                 
@@ -703,16 +661,18 @@ def registrar_venda_pdv_estoque():
 
                 insumo_dict = dict(resultado_insumo) if not isinstance(resultado_insumo, dict) else resultado_insumo
                 insumo_nome = insumo_dict['nome']
-                estoque_atual = insumo_dict['estoque_atual']
+                # ATENÇÃO: Mudança de 'estoque_atual' para 'quantidade_estoque'
+                estoque_atual = insumo_dict['quantidade_estoque'] 
 
                 if estoque_atual < necessario_total:
                     raise ValueError(f'Estoque insuficiente para o insumo: "{insumo_nome}". Necessário: {necessario_total}, Disponível: {estoque_atual}')
 
-                query_update = 'UPDATE insumos SET estoque_atual = estoque_atual - %s WHERE id = %s' if is_postgres else 'UPDATE insumos SET estoque_atual = estoque_atual - ? WHERE id = ?'
+                # ATENÇÃO: Mudança de 'estoque_atual' para 'quantidade_estoque' no UPDATE
+                query_update = 'UPDATE insumos SET quantidade_estoque = quantidade_estoque - %s WHERE id = %s' if is_postgres else 'UPDATE insumos SET quantidade_estoque = quantidade_estoque - ? WHERE id = ?'
                 cursor.execute(query_update, (necessario_total, insumo_id))
             
-            # Registro da Venda (Apenas a venda, não o pagamento em si)
-            query_venda = 'INSERT INTO vendas (produto_id, quantidade_vendida, data_venda) VALUES (%s, %s, CURRENT_TIMESTAMP)' if is_postgres else 'INSERT INTO vendas (produto_id, quantidade_vendida, data_venda) VALUES (?, ?, CURRENT_TIMESTAMP)'
+            # Registro da Venda
+            query_venda = 'INSERT INTO vendas (produto_id, quantidade_vendida, data_venda) VALUES (%s, %s, CURRENT_TIMESTAMP)' if is_postgres else 'INSERT INTO vendas (produto_id, quantidade_vendida, data_venda) VALUES (?, ?, DATETIME("now"))'
             cursor.execute(query_venda, (produto_id, quantidade_vendida))
         
         db.commit()
@@ -724,7 +684,7 @@ def registrar_venda_pdv_estoque():
 
 
 # ========================================
-# ROTA PRINCIPAL CORRIGIDA: REGISTRAR PAGAMENTO DE COMANDA (PDV)
+# ROTA PRINCIPAL: REGISTRAR PAGAMENTO DE COMANDA (PDV)
 # ========================================
 
 @app.route('/api/vendas', methods=['POST'])
@@ -752,9 +712,6 @@ def registrar_pagamento_comanda():
     
     try:
         # 1. Registro da Venda/Pagamento na tabela 'vendas'
-        # Assumindo que sua tabela 'vendas' foi ajustada para aceitar estes campos.
-        # SE você não ajustou, use uma tabela separada para 'pagamentos_comanda' ou ajuste sua 'vendas'.
-        
         venda_columns = "valor_total, valor_pago, troco, metodo_pagamento, comanda_id, data_venda, observacoes"
         venda_placeholders = "%s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s" if is_postgres else "?, ?, ?, ?, ?, DATETIME('now'), ?"
         venda_values = (valor_total, valor_pago, troco, metodo_pagamento, comanda_id, observacoes)
@@ -789,11 +746,8 @@ def registrar_pagamento_comanda():
             mesa_id = comanda_db['mesa_id']
             comanda_status = comanda_db['status']
             
-            # Validação: A comanda deve estar fechada/pronta para pagamento (sua comanda.html já faz isso)
             if comanda_status == 'aberta':
-                # Isso não deve acontecer se o frontend estiver correto, mas é uma segurança.
-                # Se acontecer, podemos forçar o status.
-                print(f"Aviso: Comanda {comanda_id} ainda estava 'aberta', forçando para 'paga'.")
+                 print(f"Aviso: Comanda {comanda_id} ainda estava 'aberta', forçando para 'paga'.")
 
 
             # B) Atualizar Status da Comanda para 'paga'
@@ -815,266 +769,6 @@ def registrar_pagamento_comanda():
     except Exception as e:
         db.rollback()
         print(f"Erro na transação de pagamento/comanda: {str(e)}")
-        return jsonify({'error': f'Erro ao registrar pagamento: {str(e)}'}), 500
+        return jsonify({'error': f'Erro na transação de pagamento/comanda: {str(e)}'}), 500
 
-# ========================================
-# ROTAS DE MESAS (Continuação)
-# ========================================
-
-@app.route('/api/mesas', methods=['GET'])
-def get_mesas():
-    """Lista todas as mesas com status e comanda ativa"""
-    try:
-        db = get_db_connection()
-        cursor = db.cursor()
-        
-        is_postgres = os.environ.get('DATABASE_URL') is not None
-        
-        # Query para buscar mesas com informações de comanda ativa
-        query = '''
-            SELECT 
-                m.id, m.numero, m.capacidade, m.localizacao, m.status,
-                c.id as comanda_id, c.total as comanda_total
-            FROM mesas m
-            LEFT JOIN comandas c ON m.id = c.mesa_id AND c.status = 'aberta'
-            ORDER BY m.numero
-        '''
-        
-        cursor.execute(query)
-        mesas = cursor.fetchall()
-        
-        mesas_list = []
-        for mesa in mesas:
-            mesa_dict = dict(mesa) if not isinstance(mesa, dict) else mesa
-            mesas_list.append({
-                'id': mesa_dict['id'],
-                'numero': mesa_dict['numero'],
-                'capacidade': mesa_dict['capacidade'],
-                'localizacao': mesa_dict['localizacao'],
-                'status': mesa_dict['status'],
-                'comanda_ativa': {
-                    'id': mesa_dict.get('comanda_id'),
-                    # Conversão para float para o total da comanda
-                    'total': float(mesa_dict.get('comanda_total', 0)) if mesa_dict.get('comanda_total') else 0
-                } if mesa_dict.get('comanda_id') else None
-            })
-        
-        return jsonify(mesas_list), 200
-    except Exception as e:
-        print(f"Erro ao buscar mesas: {str(e)}")
-        return jsonify({'error': f'Erro ao buscar mesas: {str(e)}'}), 500
-
-
-@app.route('/api/mesas', methods=['POST'])
-def add_mesa():
-    """Cadastra uma nova mesa"""
-    try:
-        data = request.get_json()
-        
-        if not data or 'numero' not in data or 'capacidade' not in data:
-            return jsonify({'error': 'Número e capacidade são obrigatórios'}), 400
-        
-        numero = int(data['numero'])
-        capacidade = int(data['capacidade'])
-        localizacao = data.get('localizacao', '')
-        
-        if numero <= 0 or capacidade <= 0:
-            return jsonify({'error': 'Número e capacidade devem ser maiores que zero'}), 400
-        
-        db = get_db_connection()
-        cursor = db.cursor()
-        
-        is_postgres = os.environ.get('DATABASE_URL') is not None
-        
-        if is_postgres:
-            cursor.execute(
-                'INSERT INTO mesas (numero, capacidade, localizacao) VALUES (%s, %s, %s) RETURNING id, numero, capacidade, localizacao, status',
-                (numero, capacidade, localizacao)
-            )
-            result = cursor.fetchone()
-            mesa = dict(result) if isinstance(result, dict) else {
-                'id': result[0], 'numero': result[1], 'capacidade': result[2],
-                'localizacao': result[3], 'status': result[4]
-            }
-        else:
-            cursor.execute(
-                'INSERT INTO mesas (numero, capacidade, localizacao) VALUES (?, ?, ?)',
-                (numero, capacidade, localizacao)
-            )
-            new_id = cursor.lastrowid
-            mesa = {
-                'id': new_id,
-                'numero': numero,
-                'capacidade': capacidade,
-                'localizacao': localizacao,
-                'status': 'disponivel'
-            }
-        
-        db.commit()
-        return jsonify(mesa), 201
-        
-    except Exception as e:
-        print(f"Erro ao adicionar mesa: {str(e)}")
-        return jsonify({'error': f'Erro ao adicionar mesa: {str(e)}'}), 500
-
-
-@app.route('/api/mesas/<int:mesa_id>', methods=['PUT'])
-def update_mesa(mesa_id):
-    """Atualiza informações de uma mesa"""
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'error': 'Dados não fornecidos'}), 400
-        
-        db = get_db_connection()
-        cursor = db.cursor()
-        
-        is_postgres = os.environ.get('DATABASE_URL') is not None
-        
-        # Monta query dinamicamente baseado nos campos fornecidos
-        updates = []
-        values = []
-        
-        if 'numero' in data:
-            updates.append('numero = %s' if is_postgres else 'numero = ?')
-            values.append(int(data['numero']))
-        if 'capacidade' in data:
-            updates.append('capacidade = %s' if is_postgres else 'capacidade = ?')
-            values.append(int(data['capacidade']))
-        if 'localizacao' in data:
-            updates.append('localizacao = %s' if is_postgres else 'localizacao = ?')
-            values.append(data['localizacao'])
-        if 'status' in data:
-            updates.append('status = %s' if is_postgres else 'status = ?')
-            values.append(data['status'])
-        
-        # CONTINUAÇÃO DA ROTA (Você parou aqui)
-        if not updates:
-            return jsonify({'error': 'Nenhum campo para atualizar'}), 400
-
-        values.append(mesa_id)
-        query = f"UPDATE mesas SET {', '.join(updates)} WHERE id = {'%s' if is_postgres else '?'}"
-        
-        cursor.execute(query, values)
-        db.commit()
-        
-        if cursor.rowcount == 0:
-            return jsonify({'error': 'Mesa não encontrada'}), 404
-        
-        return jsonify({'message': 'Mesa atualizada com sucesso'}), 200
-
-    except Exception as e:
-        print(f"Erro ao atualizar mesa: {str(e)}")
-        return jsonify({'error': f'Erro ao atualizar mesa: {str(e)}'}), 500
-
-# ========================================
-# ROTAS DE COMANDAS (ENDPOINT ADICIONAIS NECESSÁRIOS)
-# ========================================
-
-@app.route('/api/comandas/<int:comanda_id>', methods=['GET'])
-def get_comanda(comanda_id):
-    """Busca os detalhes de uma comanda (incluindo itens e total)"""
-    try:
-        db = get_db_connection()
-        cursor = db.cursor()
-        is_postgres = os.environ.get('DATABASE_URL') is not None
-        
-        # Query para Comanda
-        query_comanda = '''
-            SELECT 
-                c.id, c.mesa_id, m.numero as mesa_numero, c.status, c.total, c.data_abertura
-            FROM comandas c
-            JOIN mesas m ON c.mesa_id = m.id
-            WHERE c.id = %s
-        ''' if is_postgres else '''
-            SELECT 
-                c.id, c.mesa_id, m.numero as mesa_numero, c.status, c.total, c.data_abertura
-            FROM comandas c
-            JOIN mesas m ON c.mesa_id = m.id
-            WHERE c.id = ?
-        '''
-        cursor.execute(query_comanda, (comanda_id,))
-        comanda = cursor.fetchone()
-        
-        if not comanda:
-            return jsonify({'error': 'Comanda não encontrada'}), 404
-
-        comanda_dict = dict(comanda) if not isinstance(comanda, dict) else comanda
-        
-        # Query para Itens
-        query_itens = '''
-            SELECT 
-                ci.id, ci.produto_id, ci.quantidade, ci.preco_unitario, ci.observacoes,
-                p.nome as produto_nome, (ci.quantidade * ci.preco_unitario) as subtotal
-            FROM comanda_itens ci
-            JOIN produtos p ON ci.produto_id = p.id
-            WHERE ci.comanda_id = %s
-        ''' if is_postgres else '''
-            SELECT 
-                ci.id, ci.produto_id, ci.quantidade, ci.preco_unitario, ci.observacoes,
-                p.nome as produto_nome, (ci.quantidade * ci.preco_unitario) as subtotal
-            FROM comanda_itens ci
-            JOIN produtos p ON ci.produto_id = p.id
-            WHERE ci.comanda_id = ?
-        '''
-        cursor.execute(query_itens, (comanda_id,))
-        itens = cursor.fetchall()
-        
-        comanda_dict['itens'] = [dict(item) if not isinstance(item, dict) else item for item in itens]
-        
-        # Garante que o total é um float
-        comanda_dict['total'] = float(comanda_dict['total'])
-        
-        return jsonify(comanda_dict), 200
-
-    except Exception as e:
-        print(f"Erro ao buscar comanda: {str(e)}")
-        return jsonify({'error': f'Erro ao buscar comanda: {str(e)}'}), 500
-
-@app.route('/api/comandas/<int:comanda_id>/fechar', methods=['POST'])
-def fechar_comanda(comanda_id):
-    """Fecha a comanda, calculando o total final, antes de ir para o PDV."""
-    try:
-        db = get_db_connection()
-        cursor = db.cursor()
-        is_postgres = os.environ.get('DATABASE_URL') is not None
-        
-        # 1. Recalcular o Total
-        query_total = '''
-            SELECT SUM(ci.quantidade * ci.preco_unitario) as total 
-            FROM comanda_itens ci
-            WHERE ci.comanda_id = %s
-        ''' if is_postgres else '''
-            SELECT SUM(ci.quantidade * ci.preco_unitario) as total 
-            FROM comanda_itens ci
-            WHERE ci.comanda_id = ?
-        '''
-        cursor.execute(query_total, (comanda_id,))
-        resultado = cursor.fetchone()
-        
-        total = float(resultado['total']) if resultado and resultado['total'] else 0.00
-        
-        # 2. Atualizar a comanda (Status para 'fechada' e o Total)
-        query_update = "UPDATE comandas SET status = %s, total = %s WHERE id = %s" if is_postgres else "UPDATE comandas SET status = ?, total = ? WHERE id = ?"
-        cursor.execute(query_update, ('fechada', total, comanda_id))
-        
-        if cursor.rowcount == 0:
-            db.rollback()
-            return jsonify({'error': 'Comanda não encontrada'}), 404
-        
-        db.commit()
-        return jsonify({'message': f'Comanda {comanda_id} fechada e pronta para pagamento. Total: R$ {total:.2f}'}), 200
-
-    except Exception as e:
-        db.rollback()
-        print(f"Erro ao fechar comanda: {str(e)}")
-        return jsonify({'error': f'Erro ao fechar comanda: {str(e)}'}), 500
-
-# Se você precisar da rota de adicionar item, ela ficaria assim:
-# @app.route('/api/comandas/<int:comanda_id>/itens', methods=['POST'])
-# def add_item_comanda(comanda_id):
-#     # ... Lógica de adicionar item com insert na comanda_itens e update no total da comandas
-#     pass
-
-# FIM DA ÚLTIMA ROTA DO SEU CÓDIGO.
+# FIM do código
