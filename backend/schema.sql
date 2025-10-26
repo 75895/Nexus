@@ -1,8 +1,7 @@
 -- ========================================
--- RESET E TABELAS PRINCIPAIS (ORDEM CORRIGIDA)
+-- RESET E TABELAS PRINCIPAIS (ORDEM CORRIGIDA FINAL)
+-- Excluir tabelas dependentes ANTES das tabelas principais.
 -- ========================================
-
--- DROP TABLES: Excluir tabelas dependentes ANTES das tabelas principais.
 
 DROP TABLE IF EXISTS ficha_tecnica; 
 DROP TABLE IF EXISTS comanda_itens;
@@ -78,7 +77,7 @@ CREATE TABLE comanda_itens (
     comanda_id INTEGER NOT NULL,
     produto_id INTEGER NOT NULL,
     quantidade INTEGER NOT NULL,
-    preco_unitario REAL NOT NULL, -- Preço na hora da inclusão
+    preco_unitario REAL NOT NULL, 
     observacoes TEXT,
     FOREIGN KEY (comanda_id) REFERENCES comandas (id) ON DELETE CASCADE,
     FOREIGN KEY (produto_id) REFERENCES produtos (id) ON DELETE RESTRICT

@@ -771,4 +771,4 @@ def registrar_pagamento_comanda():
         print(f"Erro na transação de pagamento/comanda: {str(e)}")
         return jsonify({'error': f'Erro na transação de pagamento/comanda: {str(e)}'}), 500
 
-# FIM do código
+# FIM do código 
