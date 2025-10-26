@@ -91,8 +91,6 @@ def migrar_tabela_insumos():
             print("⚠️ Coluna fornecedor já existe")
         
         conn.commit()
-        conn.close()
-        print("✅ Migração concluída!")
     except Exception as e:
         print(f"❌ Erro na migração: {e}")
 
@@ -102,9 +100,6 @@ def close_connection(exception):
     db = getattr(g, '_database', None)
     if db is not None:
         db.close()
-    
-    # Esta linha estava duplicada e no lugar errado, removida ou ajustada.
-    # print("✅ Banco de dados inicializado com sucesso!") 
 
 @app.route('/init_db')
 def initialize_db_route():
@@ -930,3 +925,162 @@ def get_comanda_detalhes(comanda_id):
     except Exception as e:
         print(f"Erro ao buscar detalhes da comanda: {str(e)}")
         return jsonify({'error': f'Erro ao buscar detalhes da comanda: {str(e)}'}), 500
+
+# ========================================
+# NOVAS ROTAS DE DASHBOARD E ESTATÍSTICAS
+# ========================================
+
+@app.route('/api/par/estatisticas', methods=['GET'])
+def get_estatisticas_gerais():
+    """Retorna dados gerais para o Dashboard (como vendas nos últimos 30 dias)"""
+    try:
+        db = get_db_connection()
+        cursor = db.cursor()
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # Receita 30 dias
+        if is_postgres:
+            query_vendas_30_dias = '''
+                SELECT SUM(total) as receita
+                FROM comandas
+                WHERE status = 'fechada' AND data_fechamento >= NOW() - INTERVAL '30 days'
+            '''
+            cursor.execute(query_vendas_30_dias)
+        else:
+            query_vendas_30_dias = '''
+                SELECT SUM(total) as receita
+                FROM comandas
+                WHERE status = 'fechada' AND data_fechamento >= strftime('%Y-%m-%d %H:%M:%S', date('now', '-30 days'))
+            '''
+            cursor.execute(query_vendas_30_dias)
+            
+        receita = cursor.fetchone()
+        receita_30_dias = float(receita['receita']) if receita and receita['receita'] else 0.0
+
+        return jsonify({
+            'receita_30_dias': round(receita_30_dias, 2),
+            # Adicionar outras estatísticas conforme o frontend precisar
+        }), 200
+
+    except Exception as e:
+        print(f"Erro ao buscar estatísticas gerais: {str(e)}")
+        return jsonify({'error': f'Erro ao buscar estatísticas gerais: {str(e)}'}), 500
+
+@app.route('/api/vendas/por-dia', methods=['GET'])
+def get_vendas_por_dia():
+    """Retorna o total de vendas por dia (ex: últimos 7 dias)"""
+    try:
+        db = get_db_connection()
+        cursor = db.cursor()
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+
+        if is_postgres:
+            # PostgreSQL
+            query = '''
+                SELECT 
+                    DATE(data_fechamento) as dia,
+                    SUM(total) as total_dia
+                FROM comandas
+                WHERE status = 'fechada' AND data_fechamento >= NOW() - INTERVAL '7 days'
+                GROUP BY 1
+                ORDER BY 1;
+            '''
+            cursor.execute(query)
+        else:
+            # SQLite
+            query = '''
+                SELECT 
+                    strftime('%Y-%m-%d', data_fechamento) as dia,
+                    SUM(total) as total_dia
+                FROM comandas
+                WHERE status = 'fechada' AND data_fechamento >= strftime('%Y-%m-%d %H:%M:%S', date('now', '-7 days'))
+                GROUP BY 1
+                ORDER BY 1;
+            '''
+            cursor.execute(query)
+
+        vendas = cursor.fetchall()
+        return jsonify([{
+            'dia': row['dia'], 
+            'total': float(row['total_dia'])
+        } for row in vendas]), 200
+
+    except Exception as e:
+        print(f"Erro ao buscar vendas por dia: {str(e)}")
+        return jsonify({'error': f'Erro ao buscar vendas por dia: {str(e)}'}), 500
+
+@app.route('/api/produtos/o-mais-vendidos', methods=['GET'])
+def get_mais_vendidos():
+    """Retorna os top X produtos mais vendidos (ex: últimos 30 dias)"""
+    try:
+        db = get_db_connection()
+        cursor = db.cursor()
+        is_postgres = os.environ.get('DATABASE_URL') is not None
+        
+        # Retorna o top 5 produtos mais vendidos nas comandas fechadas
+        if is_postgres:
+            # PostgreSQL
+            query = '''
+                SELECT 
+                    p.nome as produto_nome,
+                    SUM(ic.quantidade) as total_vendido
+                FROM itens_comanda ic
+                JOIN produtos p ON ic.produto_id = p.id
+                JOIN comandas c ON ic.comanda_id = c.id
+                WHERE c.status = 'fechada' AND c.data_fechamento >= NOW() - INTERVAL '30 days'
+                GROUP BY 1
+                ORDER BY 2 DESC
+                LIMIT 5;
+            '''
+        else:
+            # SQLite
+            query = '''
+                SELECT 
+                    p.nome as produto_nome,
+                    SUM(ic.quantidade) as total_vendido
+                FROM itens_comanda ic
+                JOIN produtos p ON ic.produto_id = p.id
+                JOIN comandas c ON ic.comanda_id = c.id
+                WHERE c.status = 'fechada' AND c.data_fechamento >= strftime('%Y-%m-%d %H:%M:%S', date('now', '-30 days'))
+                GROUP BY 1
+                ORDER BY 2 DESC
+                LIMIT 5;
+            '''
+        
+        cursor.execute(query)
+        vendidos = cursor.fetchall()
+        return jsonify([dict(row) for row in vendidos]), 200
+        
+    except Exception as e:
+        print(f"Erro ao buscar mais vendidos: {str(e)}")
+        return jsonify({'error': f'Erro ao buscar mais vendidos: {str(e)}'}), 500
+
+@app.route('/api/insumos/estoque-baixo', methods=['GET'])
+def get_insumos_estoque_baixo():
+    """Retorna insumos com estoque abaixo de um limite mínimo (assumindo estoque_minimo)"""
+    try:
+        db = get_db_connection()
+        cursor = db.cursor()
+        
+        # Esta rota depende que você tenha a coluna `estoque_minimo` na tabela `insumos`
+        query = '''
+            SELECT id, nome, estoque_atual, estoque_minimo, unidade_medida
+            FROM insumos
+            WHERE estoque_atual <= estoque_minimo AND estoque_minimo > 0
+            ORDER BY estoque_atual ASC;
+        '''
+        
+        cursor.execute(query)
+        insumos = cursor.fetchall()
+        return jsonify([dict(row) for row in insumos]), 200
+        
+    except Exception as e:
+        # Se a tabela insumos não tiver estoque_minimo (erro no schema), esta exceção ajuda a diagnosticar.
+        print(f"Erro ao buscar estoque baixo: {str(e)}")
+        return jsonify({'error': 'Erro ao buscar estoque baixo. Verifique se o schema do banco está atualizado (tabela insumos possui estoque_minimo).'}), 500
+
+
+if __name__ == '__main__':
+    # Este bloco só executa se você rodar o arquivo Python diretamente (localmente)
+    # No Render, a inicialização geralmente é feita por um comando Gunicorn/Waitress, mas este bloco é essencial para testar localmente.
+    app.run(debug=True)
