@@ -212,6 +212,7 @@
         // Carregar comanda
         async function carregarComanda() {
             try {
+                
                 const response = await fetch(`${API_URL}/api/comandas/${comandaId}`);
                 
                 if (!response.ok) {

@@ -18,77 +18,48 @@
     <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Nexus">
+    
+    <script src="config.js"></script>
+
 </head>
 
 <body class="flex items-center justify-center min-h-screen" style="background: url('/Nexus/imagens/chef_tablet_restaurant.png') no-repeat center center fixed; background-size: cover;">
 
     <div class="bg-white bg-opacity-90 p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Login</h2>
-
-        <form id="loginForm">
+        <h2 class="text-3xl font-extrabold text-gray-900 text-center mb-6">Acesso ao Sistema</h2>
+        <p class="text-center text-gray-600 mb-8">Entre com suas credenciais para continuar</p>
+        
+        <form id="login-form">
             <div class="mb-4">
-                <label for="username" class="block text-gray-700 text-sm font-bold mb-2">Usuário:</label>
-                <input 
-                    type="text" 
-                    id="username" 
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Digite seu usuário"
-                    required
-                >
+                <label for="username" class="block text-sm font-medium text-gray-700 mb-2">Usuário</label>
+                <input type="text" id="username" name="username" required 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
             </div>
-
             <div class="mb-6">
-                <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Senha:</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Digite sua senha"
-                    required
-                >
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Senha</label>
+                <input type="password" id="password" name="password" required 
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
             </div>
-
-            <div class="flex items-center justify-between flex-col space-y-3">
-                <button 
-                    type="submit" 
-                    class="bg-gradient-to-r from-red-500 to-pink-500 hover:from-pink-500 hover:to-red-500 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-                >
-                    Entrar
-                </button>
-
-                <a href="/Nexus/cadastro.html" class="text-center text-blue-600 hover:text-blue-800 text-sm font-semibold block">
-                    Não tem conta? Cadastre-se
-                </a>
-            </div>
+            <button type="submit" 
+                    class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition duration-300 shadow-md">
+                Entrar
+            </button>
         </form>
+        
+        <p class="mt-6 text-center text-sm">
+            Não tem uma conta? 
+            <a href="/Nexus/cadastro.html" class="text-purple-600 hover:text-purple-800 font-medium">Cadastre-se</a>
+        </p>
     </div>
 
     <script>
-    // URL base da API
-    const API_BASE_URL = 'https://nexus-backend-pvj4.onrender.com';
-
-    // 1. Redirecionar se o usuário já estiver logado
-    function checkLoginStatus() {
-        if (localStorage.getItem('usuario_id')) {
-            window.location.href = '/Nexus/dashboard.html';
-        }
-    }
-    checkLoginStatus();
-
-    // 2. Lógica de Login
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
-        
-        if (!username || !password) {
-            alert('Por favor, preencha usuário e senha.');
-            return;
-        }
-        
+
         try {
-            // Rota de Login no root da API
+            // CORREÇÃO: Usa a variável API_BASE_URL
             const response = await fetch(`${API_BASE_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -103,6 +74,8 @@
                 // Armazenamento dos dados do usuário
                 localStorage.setItem('usuario_id', resultado.user.id);
                 localStorage.setItem('usuario_nome', resultado.user.username);
+                // Armazenar token se você implementar JWT no futuro
+                // localStorage.setItem('token', resultado.token); 
                 
                 alert('Bem-vindo(a), ' + resultado.user.username + '!');
                 window.location.href = '/Nexus/dashboard.html';

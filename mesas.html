@@ -275,7 +275,8 @@
                     tr.innerHTML = `
                         <td class="px-4 py-2">#${comanda.id}</td>
                         <td class="px-4 py-2">Mesa ${comanda.mesa_numero}</td>
-                        <td class="px-4 py-2 font-semibold">R$ ${comanda.total.toFixed(2)}</td>
+                        <td class="px-4 py-2 font-semibold">R$ ${Number(comanda.total || 0).toFixed(2)}</td>
+
                         <td class="px-4 py-2">${dataFormatada}</td>
                         <td class="px-4 py-2 text-center">
                             <button 
