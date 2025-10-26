@@ -5,7 +5,13 @@ from flask_cors import CORS
 import bcrypt
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/*": {
+        "origins": "https://75895.github.io",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type"] # Se você não usa JWT ou Token, "Authorization" é opcional
+    }
+})
 
 DATABASE = 'restaurante.db'
 
