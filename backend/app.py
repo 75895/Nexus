@@ -5,12 +5,7 @@ from flask_cors import CORS
 import bcrypt
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "https://75895.github.io"}}, supports_credentials=True)
-@app.before_request
-def handle_options():
-    if request.method == "OPTIONS":
-        return '', 200
-
+CORS(app)
 
 DATABASE = 'restaurante.db'
 
