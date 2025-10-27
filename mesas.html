@@ -266,30 +266,30 @@
                 }
 
                 comandas.forEach(comanda => {
-                    console.log("DEBUG COMANDA:", comanda);
-                    const tr = document.createElement('tr');
-                    tr.className = 'border-b hover:bg-gray-50';
-                    
-                    const dataAbertura = new Date(comanda.data_abertura);
-                    const dataFormatada = dataAbertura.toLocaleString('pt-BR');
-                    
-                    tr.innerHTML = `
-                        <td class="px-4 py-2">#${comanda.id}</td>
-                        <td class="px-4 py-2">Mesa ${comanda.mesa_numero}</td>
-                        <td class="px-4 py-2 font-semibold">R$ ${Number(comanda.total || 0).toFixed(2)}</td>
+    console.log("DEBUG COMANDA:", comanda);
+    const tr = document.createElement('tr');
+    tr.className = 'border-b hover:bg-gray-50';
+    
+    const dataAbertura = new Date(comanda.data_abertura);
+    const dataFormatada = dataAbertura.toLocaleString('pt-BR');
+    
+    tr.innerHTML = `
+        <td class="px-4 py-2">#${comanda.id}</td>
+        <td class="px-4 py-2">Mesa ${comanda.mesa_numero}</td>
+        <td class="px-4 py-2 font-semibold">R$ ${Number(comanda.total || 0).toFixed(2)}</td>
+        <td class="px-4 py-2">${dataFormatada}</td>
+        <td class="px-4 py-2 text-center">
+            <button 
+                onclick="window.location.href='/Nexus/comanda.html?id=${comanda.id}'" 
+                class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+            >
+                Ver Detalhes
+            </button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+});
 
-                        <td class="px-4 py-2">${dataFormatada}</td>
-                        <td class="px-4 py-2 text-center">
-                            <button 
-                                onclick="window.location.href='/Nexus/comanda.html?id=${comanda.id}'" 
-                                class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
-                            >
-                                Ver Detalhes
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
             } catch (error) {
                 console.error('Erro ao carregar comandas:', error);
             }
