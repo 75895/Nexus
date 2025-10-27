@@ -14,7 +14,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Nexus">
-    <link rel="icon" type="image/png" href="/Nexus/imagens/favicon.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Nexus">
 </head>
@@ -114,7 +113,6 @@
                         </tr>
                     </thead>
                     <tbody id="comandasTableBody">
-                        <!-- Dados serão carregados dinamicamente -->
                         <tr>
                             <td colspan="5" class="px-4 py-4 text-center text-gray-500">Nenhuma comanda aberta</td>
                         </tr>
@@ -127,19 +125,16 @@
     <script>
         const API_URL = 'https://nexus-backend-pvj4.onrender.com';
 
-        // Carregar mesas e comandas ao carregar a página
         document.addEventListener('DOMContentLoaded', function() {
             carregarMesas();
             carregarComandasAbertas();
-            
-            // Atualizar a cada 30 segundos
             setInterval(() => {
                 carregarMesas();
                 carregarComandasAbertas();
             }, 30000);
         });
 
-        // Cadastrar nova mesa
+        // Cadastro de nova mesa
         document.getElementById('mesaForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -152,9 +147,7 @@
             try {
                 const response = await fetch(`${API_URL}/api/mesas`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
 
@@ -193,13 +186,17 @@
                     if (mesa.status === 'ocupada') corStatus = 'bg-red-500';
                     if (mesa.status === 'reservada') corStatus = 'bg-yellow-500';
                     
+                    const total = mesa.comanda_ativa && mesa.comanda_ativa.total
+                        ? parseFloat(mesa.comanda_ativa.total)
+                        : 0;
+                    
                     mesaCard.className = `${corStatus} text-white rounded-lg p-4 cursor-pointer hover:opacity-80 transition`;
                     mesaCard.innerHTML = `
                         <div class="text-center">
                             <div class="text-3xl font-bold mb-2">${mesa.numero}</div>
                             <div class="text-sm">Cap: ${mesa.capacidade}</div>
                             ${mesa.localizacao ? `<div class="text-xs mt-1">${mesa.localizacao}</div>` : ''}
-                            ${mesa.comanda_ativa ? `<div class="text-sm mt-2 font-semibold">R$ ${(parseFloat(mesa.comanda_ativa.total) || 0).toFixed(2)}</div>` : ''}
+                            ${mesa.comanda_ativa ? `<div class="text-sm mt-2 font-semibold">R$ ${total.toFixed(2)}</div>` : ''}
                         </div>
                     `;
                     
@@ -220,16 +217,12 @@
 
         // Abrir comanda
         async function abrirComanda(mesaId, mesaNumero) {
-            if (!confirm(`Abrir comanda na Mesa ${mesaNumero}?`)) {
-                return;
-            }
+            if (!confirm(`Abrir comanda na Mesa ${mesaNumero}?`)) return;
 
             try {
                 const response = await fetch(`${API_URL}/api/comandas`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mesa_id: mesaId })
                 });
 
@@ -256,7 +249,7 @@
                 const tbody = document.getElementById('comandasTableBody');
                 tbody.innerHTML = '';
 
-                if (comandas.length === 0) {
+                if (!Array.isArray(comandas) || comandas.length === 0) {
                     tbody.innerHTML = `
                         <tr>
                             <td colspan="5" class="px-4 py-4 text-center text-gray-500">Nenhuma comanda aberta</td>
@@ -266,30 +259,35 @@
                 }
 
                 comandas.forEach(comanda => {
-    console.log("DEBUG COMANDA:", comanda);
-    const tr = document.createElement('tr');
-    tr.className = 'border-b hover:bg-gray-50';
-    
-    const dataAbertura = new Date(comanda.data_abertura);
-    const dataFormatada = dataAbertura.toLocaleString('pt-BR');
-    
-    tr.innerHTML = `
-        <td class="px-4 py-2">#${comanda.id}</td>
-        <td class="px-4 py-2">Mesa ${comanda.mesa_numero}</td>
-        <td class="px-4 py-2 font-semibold">R$ ${Number(comanda.total || 0).toFixed(2)}</td>
-        <td class="px-4 py-2">${dataFormatada}</td>
-        <td class="px-4 py-2 text-center">
-            <button 
-                onclick="window.location.href='/Nexus/comanda.html?id=${comanda.id}'" 
-                class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
-            >
-                Ver Detalhes
-            </button>
-        </td>
-    `;
-    tbody.appendChild(tr);
-});
+                    console.log("DEBUG COMANDA:", comanda);
 
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b hover:bg-gray-50';
+                    
+                    const dataAbertura = new Date(comanda.data_abertura);
+                    const dataFormatada = dataAbertura.toLocaleString('pt-BR');
+                    
+                    let totalFormatado = "0.00";
+                    if (comanda && comanda.total != null && !isNaN(parseFloat(comanda.total))) {
+                        totalFormatado = parseFloat(comanda.total).toFixed(2);
+                    }
+
+                    tr.innerHTML = `
+                        <td class="px-4 py-2">#${comanda.id}</td>
+                        <td class="px-4 py-2">Mesa ${comanda.mesa_numero}</td>
+                        <td class="px-4 py-2 font-semibold">R$ ${totalFormatado}</td>
+                        <td class="px-4 py-2">${dataFormatada}</td>
+                        <td class="px-4 py-2 text-center">
+                            <button 
+                                onclick="window.location.href='/Nexus/comanda.html?id=${comanda.id}'" 
+                                class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                            >
+                                Ver Detalhes
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
             } catch (error) {
                 console.error('Erro ao carregar comandas:', error);
             }
@@ -304,39 +302,30 @@
       📱 Instalar App
     </button>
 
-    <!-- Registrar Service Worker para PWA -->
+    <!-- Registrar Service Worker -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/Nexus/service-worker.js')
-            .then(registration => {
-              console.log('✅ Service Worker registrado com sucesso:', registration.scope);
-            })
-            .catch(error => {
-              console.error('❌ Erro ao registrar Service Worker:', error);
-            });
+            .then(registration => console.log('✅ Service Worker registrado:', registration.scope))
+            .catch(error => console.error('❌ Erro ao registrar Service Worker:', error));
         });
       }
 
-      // Botão de instalação PWA
       let deferredPrompt;
       window.addEventListener('beforeinstallprompt', (event) => {
         event.preventDefault();
         deferredPrompt = event;
         const installButton = document.getElementById('install-button');
-        if (installButton) {
-          installButton.style.display = 'block';
-          installButton.addEventListener('click', () => {
-            installButton.style.display = 'none';
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((choiceResult) => {
-              if (choiceResult.outcome === 'accepted') {
-                console.log('✅ App instalado');
-              }
-              deferredPrompt = null;
-            });
+        installButton.style.display = 'block';
+        installButton.addEventListener('click', () => {
+          installButton.style.display = 'none';
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choice) => {
+            if (choice.outcome === 'accepted') console.log('✅ App instalado');
+            deferredPrompt = null;
           });
-        }
+        });
       });
     </script>
 </body>
