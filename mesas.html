@@ -240,58 +240,65 @@
             }
         }
 
-        // Carregar comandas abertas
-        async function carregarComandasAbertas() {
-            try {
-                const response = await fetch(`${API_URL}/api/comandas?status=aberta`);
-                const comandas = await response.json();
+// Carregar comandas abertas
+async function carregarComandasAbertas() {
+    try {
+        const response = await fetch(`${API_URL}/api/comandas?status=aberta`);
+        const comandas = await response.json();
 
-                const tbody = document.getElementById('comandasTableBody');
-                tbody.innerHTML = '';
+        const tbody = document.getElementById('comandasTableBody');
+        tbody.innerHTML = '';
 
-                if (!Array.isArray(comandas) || comandas.length === 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">Nenhuma comanda aberta</td>
-                        </tr>
-                    `;
-                    return;
-                }
-
-                comandas.forEach(comanda => {
-                    console.log("DEBUG COMANDA:", comanda);
-
-                    const tr = document.createElement('tr');
-                    tr.className = 'border-b hover:bg-gray-50';
-                    
-                    const dataAbertura = new Date(comanda.data_abertura);
-                    const dataFormatada = dataAbertura.toLocaleString('pt-BR');
-                    
-                    let totalFormatado = "0.00";
-                    if (comanda && comanda.total != null && !isNaN(parseFloat(comanda.total))) {
-                        totalFormatado = parseFloat(comanda.total).toFixed(2);
-                    }
-
-                    tr.innerHTML = `
-                        <td class="px-4 py-2">#${comanda.id}</td>
-                        <td class="px-4 py-2">Mesa ${comanda.mesa_numero}</td>
-                        <td class="px-4 py-2 font-semibold">R$ ${totalFormatado}</td>
-                        <td class="px-4 py-2">${dataFormatada}</td>
-                        <td class="px-4 py-2 text-center">
-                            <button 
-                                onclick="window.location.href='/Nexus/comanda.html?id=${comanda.id}'" 
-                                class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
-                            >
-                                Ver Detalhes
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (error) {
-                console.error('Erro ao carregar comandas:', error);
-            }
+        if (!Array.isArray(comandas) || comandas.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-4 py-4 text-center text-gray-500">Nenhuma comanda aberta</td>
+                </tr>
+            `;
+            return;
         }
+
+        comandas.forEach(comanda => {
+            if (!comanda) return; // Evita erro se algum item vier null
+
+            console.log("DEBUG COMANDA:", comanda);
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b hover:bg-gray-50';
+
+            // Garante data válida
+            let dataFormatada = '-';
+            if (comanda.data_abertura) {
+                const dataAbertura = new Date(comanda.data_abertura);
+                dataFormatada = isNaN(dataAbertura.getTime()) ? '-' : dataAbertura.toLocaleString('pt-BR');
+            }
+
+            // Garante número seguro
+            const totalBruto = parseFloat(comanda.total);
+            const totalFormatado = isNaN(totalBruto) ? '0.00' : totalBruto.toFixed(2);
+
+            tr.innerHTML = `
+                <td class="px-4 py-2">#${comanda.id ?? '-'}</td>
+                <td class="px-4 py-2">Mesa ${comanda.mesa_numero ?? '-'}</td>
+                <td class="px-4 py-2 font-semibold">R$ ${totalFormatado}</td>
+                <td class="px-4 py-2">${dataFormatada}</td>
+                <td class="px-4 py-2 text-center">
+                    <button 
+                        onclick="window.location.href='/Nexus/comanda.html?id=${comanda.id}'" 
+                        class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                    >
+                        Ver Detalhes
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } catch (error) {
+        console.error('Erro ao carregar comandas:', error);
+    }
+}
+
     </script>
 
     <!-- Botão de Instalação PWA -->

@@ -313,7 +313,9 @@
                 return;
             }
 
-            if (!confirm(`Finalizar comanda para pagamento de R$ ${comandaAtual.total.toFixed(2)}? Você será redirecionado para o PDV.`)) {
+            const totalComanda = parseFloat(comandaAtual.total) || 0;
+if (!confirm(`Finalizar comanda para pagamento de R$ ${totalComanda.toFixed(2)}? Você será redirecionado para o PDV.`)) {
+
                 return;
             }
 
